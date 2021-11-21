@@ -2,5 +2,6 @@
     <string name="app_name">PortfolioAnalisis</string>
     <string name="title_home">Home</string>
     <string name="title_dashboard">Dashboard</string>
-    <string name="title_notifications">Notifications</string>
+    <string name="title_service">Сервис</string>
+    <string name="title_load_instruments">Загрузить инструменты</string>
 </resources>

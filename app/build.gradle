@@ -47,6 +47,11 @@ dependencies {
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+
+    def roomVersion = "2.3.0"
+    implementation "androidx.room:room-runtime:$roomVersion"
+    annotationProcessor "androidx.room:room-compiler:$roomVersion"
+
     implementation 'ru.tinkoff.invest:openapi-java-sdk-core:0.5.1'
     implementation 'ru.tinkoff.invest:openapi-java-sdk-java8:0.5.1'
 }

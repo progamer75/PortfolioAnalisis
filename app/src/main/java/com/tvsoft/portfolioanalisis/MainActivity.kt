@@ -8,6 +8,7 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
+import androidx.room.Room
 import com.tvsoft.portfolioanalisis.databinding.ActivityMainBinding
 import ru.tinkoff.invest.openapi.OpenApi
 import ru.tinkoff.invest.openapi.model.rest.BrokerAccountType
@@ -18,14 +19,9 @@ import ru.tinkoff.invest.openapi.okhttp.OkHttpOpenApi
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
-
     val TAG = "Main"
-    val token = "t.qgrgDsNOJaT3DKPvLTkBBL8-rIR4ENxYZ9RmHcFVxshrsOUBmveSOGcYcsab_FrtgQJDJPDFjEONb8tU_JY6Lg"
-    //trade: "t.qgrgDsNOJaT3DKPvLTkBBL8-rIR4ENxYZ9RmHcFVxshrsOUBmveSOGcYcsab_FrtgQJDJPDFjEONb8tU_JY6Lg"
-    //sandbox: "t.GKbQQCVRH0z-mEm_l49C6PoLixDlL1HTjADa962Ulgz6abbTuDr_H7CvuLlSeCyc2vS46TGrZwj_GmEejmL3gg"
-    lateinit var tinkoff_api: OpenApi
-    val isSandbox: Boolean = false
-    lateinit var portfolio: Portfolio
+    lateinit var tinkoff_api: TinkoffAPI
+    lateinit var tinkoff_db: TinkoffDB
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,26 +36,27 @@ class MainActivity : AppCompatActivity() {
         // menu should be considered as top level destinations.
         val appBarConfiguration = AppBarConfiguration(
             setOf(
-                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_notifications
+                R.id.navigation_home, R.id.navigation_dashboard, R.id.navigation_service
             )
         )
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
+
+/*        navView.setOnItemSelectedListener { item ->
+            when(item.itemId) {
+                R.id.Service -> { true}
+                else -> false
+            }
+        }*/
+
+        tinkoff_api = TinkoffAPI(TinkoffTokens().token)
+        tinkoff_api.init()
+
         initTinkoff()
     }
 
     private fun initTinkoff() {
-        println("qwerty1")
-
-        tinkoff_api = OkHttpOpenApi(token, isSandbox)
-        if (tinkoff_api.isSandboxMode) {
-            tinkoff_api.sandboxContext.performRegistration(SandboxRegisterRequest()).join()
-        }
-        println("qwerty2")
-        portfolio = tinkoff_api.portfolioContext.getPortfolio(BrokerAccountType.TINKOFF.value).join()
-        println("qwerty3")
-        for (pos in portfolio.positions) {
-            Log.i(TAG,pos.name + " - " + pos.balance)
-        }
+        tinkoff_db = Room.databaseBuilder(applicationContext, TinkoffDB::class.java, "tinkoff_db").build()
+        Log.v(TAG, "tinkoffDB - Ok")
     }
 }
