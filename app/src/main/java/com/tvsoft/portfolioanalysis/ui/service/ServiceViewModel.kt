@@ -1,4 +1,4 @@
-package com.tvsoft.portfolioanalisis.ui.service
+package com.tvsoft.portfolioanalysis.ui.service
 
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData

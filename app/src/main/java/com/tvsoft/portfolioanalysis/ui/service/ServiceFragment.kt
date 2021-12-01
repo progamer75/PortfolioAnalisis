@@ -1,4 +1,4 @@
-package com.tvsoft.portfolioanalisis.ui.service
+package com.tvsoft.portfolioanalysis.ui.service
 
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,8 +9,7 @@ import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
-import com.tvsoft.portfolioanalisis.R
-import com.tvsoft.portfolioanalisis.databinding.FragmentServiceBinding
+import com.tvsoft.portfolioanalysis.databinding.FragmentServiceBinding
 
 class ServiceFragment : Fragment() {
 

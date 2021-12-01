@@ -1,4 +1,4 @@
-package com.tvsoft.portfolioanalisis
+package com.tvsoft.portfolioanalysis
 
 import android.os.Bundle
 import android.util.Log
@@ -8,20 +8,17 @@ import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
-import androidx.room.Room
-import com.tvsoft.portfolioanalisis.databinding.ActivityMainBinding
-import ru.tinkoff.invest.openapi.OpenApi
-import ru.tinkoff.invest.openapi.model.rest.BrokerAccountType
-import ru.tinkoff.invest.openapi.model.rest.Portfolio
-import ru.tinkoff.invest.openapi.model.rest.SandboxRegisterRequest
-import ru.tinkoff.invest.openapi.okhttp.OkHttpOpenApi
+import com.tvsoft.portfolioanalisis.TinkoffTokens
+import com.tvsoft.portfolioanalysis.databinding.ActivityMainBinding
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     val TAG = "Main"
     lateinit var tinkoff_api: TinkoffAPI
-    lateinit var tinkoff_db: TinkoffDB
+    //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob()))}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -56,7 +53,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initTinkoff() {
-        tinkoff_db = Room.databaseBuilder(applicationContext, TinkoffDB::class.java, "tinkoff_db").build()
-        Log.v(TAG, "tinkoffDB - Ok")
+        //tinkoff_db = Room.databaseBuilder(applicationContext, TinkoffDB::class.java, "tinkoff_db").build()
+        //Log.v(TAG, "tinkoffDB - Ok")
     }
 }

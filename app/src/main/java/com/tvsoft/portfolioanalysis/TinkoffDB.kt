@@ -1,6 +1,9 @@
-package com.tvsoft.portfolioanalisis
+package com.tvsoft.portfolioanalysis
 
+import android.content.Context
 import androidx.room.*
+import androidx.sqlite.db.SupportSQLiteDatabase
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import java.lang.IllegalArgumentException
 import java.util.*
@@ -113,6 +116,43 @@ interface OperationDao {
 abstract class TinkoffDB : RoomDatabase() {
     abstract fun marketInstrumentDao(): MarketInstrumentDao
     abstract fun TransactionDao(): OperationDao
-}
 
-TinkoffDB_Impl
+    companion object {
+        // Singleton prevents multiple instances of database opening at the
+        // same time.
+        @Volatile
+        private var INSTANCE: TinkoffDB? = null
+
+        fun getDatabase(context: Context, scope: CoroutineScope): TinkoffDB {
+            // if the INSTANCE is not null, then return it,
+            // if it is, then create the database
+            return INSTANCE ?: synchronized(this) {
+                val instance = Room.databaseBuilder(
+                    context.applicationContext,
+                    TinkoffDB::class.java,
+                    "tinkoff_db"
+                ).addCallback(TinkoffDBCallback(scope)).build()
+                INSTANCE = instance
+                // return instance
+                instance
+            }
+        }
+
+        private class TinkoffDBCallback(
+            private val scope: CoroutineScope
+        ) : RoomDatabase.Callback() {
+            /**
+             * Override the onCreate method to populate the database.
+             */
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                super.onCreate(db)
+                // If you want to keep the data through app restarts,
+                // comment out the following line.
+/*                INSTANCE?.let { database ->
+                    scope.launch(Dispatchers.IO) {
+                        populateDatabase(database.wordDao())
+                    }*/
+                }
+            }
+    }
+}

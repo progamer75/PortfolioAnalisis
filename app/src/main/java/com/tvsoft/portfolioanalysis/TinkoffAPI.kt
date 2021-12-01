@@ -1,4 +1,4 @@
-package com.tvsoft.portfolioanalisis
+package com.tvsoft.portfolioanalysis
 
 import android.util.Log
 import ru.tinkoff.invest.openapi.OpenApi
