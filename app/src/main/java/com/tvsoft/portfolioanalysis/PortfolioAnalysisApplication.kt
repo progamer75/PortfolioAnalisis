@@ -2,18 +2,20 @@ package com.tvsoft.portfolioanalysis
 
 import android.app.Application
 import android.content.res.Configuration
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 
 class PortfolioAnalysisApplication: Application() {
-    val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob())) }
+    //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob())) }
 
     // Called when the application is starting, before any other application objects have been created.
     // Overriding this method is totally optional!
-    override fun onCreate() {
+/*    override fun onCreate() {
         super.onCreate()
-        // Required initialization logic here!
-    }
+        startKoin{
+            androidLogger()
+            androidContext(this@PortfolioAnalysisApplication)
+            //modules(listOf())
+        }
+    }*/
 
     // Called by the system when the device configuration changes while your component is running.
     // Overriding this method is totally optional!
@@ -27,4 +29,19 @@ class PortfolioAnalysisApplication: Application() {
     override fun onLowMemory() {
         super.onLowMemory()
     }
+
+    private var mAppExecutors: AppExecutors? = null
+
+    override fun onCreate() {
+        super.onCreate()
+        mAppExecutors = AppExecutors()
+    }
+
+/*    fun getDatabase(): TinkoffDB? {
+        return TinkoffDB.getInstance(this, mAppExecutors)
+    }
+
+    fun getRepository(): DataRepository? {
+        return DataRepository.getInstance(getDatabase())
+    }*/
 }

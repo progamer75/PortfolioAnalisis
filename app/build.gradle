@@ -1,12 +1,15 @@
 plugins {
     id 'com.android.application'
     id 'kotlin-android'
+    id 'kotlin-parcelize'
+    id 'kotlin-kapt'
 }
 
 android {
     compileSdk 31
 
     defaultConfig {
+        //multiDexEnabled true
         applicationId "com.tvsoft.portfolioanalisis"
         minSdk 24
         targetSdk 31
@@ -22,7 +25,13 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    dataBinding {
+        enabled = true
+    }
     compileOptions {
+        // для использования OffsetDateTime на API < 26
+        coreLibraryDesugaringEnabled = true
+
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -35,22 +44,38 @@ android {
 }
 
 dependencies {
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.6.10'
 
     implementation 'androidx.core:core-ktx:1.7.0'
-    implementation 'androidx.appcompat:appcompat:1.3.1'
+    //implementation 'androidx.appcompat:appcompat:1.4.0'
     implementation 'com.google.android.material:material:1.4.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.2'
     implementation 'androidx.lifecycle:lifecycle-livedata-ktx:2.4.0'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.4.0'
+    implementation 'androidx.activity:activity-ktx:1.4.0'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.3.5'
     implementation 'androidx.navigation:navigation-ui-ktx:2.3.5'
+    //implementation 'androidx.legacy:legacy-support-v4:1.0.0'
     testImplementation 'junit:junit:4.+'
     androidTestImplementation 'androidx.test.ext:junit:1.1.3'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
 
-    def roomVersion = "2.3.0"
+    implementation("androidx.recyclerview:recyclerview:1.2.1")
+    // For control over item selection of both touch and mouse driven selection
+    implementation("androidx.recyclerview:recyclerview-selection:1.1.0")
+
+    implementation("androidx.viewpager2:viewpager2:1.0.0")
+
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:1.1.5'
+
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0-native-mt'
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.0-native-mt'
+
+    def roomVersion = "2.4.0"
     implementation "androidx.room:room-runtime:$roomVersion"
-    annotationProcessor "androidx.room:room-compiler:$roomVersion"
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt "androidx.room:room-compiler:$roomVersion"
+    implementation "androidx.lifecycle:lifecycle-extensions:2.2.0"
 
     implementation 'ru.tinkoff.invest:openapi-java-sdk-core:0.5.1'
     implementation 'ru.tinkoff.invest:openapi-java-sdk-java8:0.5.1'

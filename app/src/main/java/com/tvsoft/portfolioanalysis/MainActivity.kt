@@ -2,26 +2,30 @@ package com.tvsoft.portfolioanalysis
 
 import android.os.Bundle
 import android.util.Log
-import com.google.android.material.bottomnavigation.BottomNavigationView
+import android.widget.Toast
+import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
 import androidx.navigation.ui.setupWithNavController
-import com.tvsoft.portfolioanalisis.TinkoffTokens
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.tvsoft.portfolioanalysis.databinding.ActivityMainBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 
 class MainActivity : AppCompatActivity() {
-
     private lateinit var binding: ActivityMainBinding
     val TAG = "Main"
-    lateinit var tinkoff_api: TinkoffAPI
+    private val viewModel: PAViewModel by viewModels<PAViewModel>()
     //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob()))}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        /*val str = savedInstanceState?.getString(KEY, "") ?: ""
+        viewModel.setString(str)*/
+
+        if (!viewModel.initTinkoff()) {
+            Toast.makeText(this, "Ошибка связи!", Toast.LENGTH_SHORT).show()
+        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -39,21 +43,32 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-/*        navView.setOnItemSelectedListener { item ->
+        Log.i(TAG, viewModel.toString())
+
+        //TODO проверить заведен ли токен, если нет, то открыть SettingsActivity
+//        val portfolioListActivity = Intent(this, SettingsActivity::class.java)
+//        startActivity(portfolioListActivity)
+
+
+    /*        navView.setOnItemSelectedListener { item ->
             when(item.itemId) {
-                R.id.Service -> { true}
+                R.id.navigation_service -> { true}
                 else -> false
             }
         }*/
-
-        tinkoff_api = TinkoffAPI(TinkoffTokens().token)
-        tinkoff_api.init()
-
-        initTinkoff()
     }
 
-    private fun initTinkoff() {
-        //tinkoff_db = Room.databaseBuilder(applicationContext, TinkoffDB::class.java, "tinkoff_db").build()
-        //Log.v(TAG, "tinkoffDB - Ok")
+    override fun onSupportNavigateUp(): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        return navController.navigateUp()
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        //outState.putString(KEY, "")
+    }
+
+/*    fun getViewModel2(): PAViewModel {
+        return viewModel
+    }*/
 }

@@ -1,13 +1,31 @@
 package com.tvsoft.portfolioanalysis.ui.home
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.*
+import com.tvsoft.portfolioanalysis.TinkoffDao
 
-class HomeViewModel : ViewModel() {
+class HomeViewModel(val tinkoffDao: TinkoffDao, application: Application) :
+    AndroidViewModel(application) {
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is home Fragment"
+    private val _portfolioSum = MutableLiveData<Float>().apply {
+        value = 123F
     }
-    val text: LiveData<String> = _text
+    val portfolioSum: LiveData<Float> = _portfolioSum
+
+    fun getPortfolioSumToString(): String {
+        return portfolioSum.toString()
+    }
+}
+
+class HomeViewModelFactory(
+    private val tinkoffDao: TinkoffDao,
+    private val application: Application
+) : ViewModelProvider.Factory {
+    @Suppress("unchecked_cast")
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
+            return HomeViewModel(tinkoffDao, application) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
 }

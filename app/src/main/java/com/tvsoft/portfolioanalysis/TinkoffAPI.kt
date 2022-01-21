@@ -2,37 +2,82 @@ package com.tvsoft.portfolioanalysis
 
 import android.util.Log
 import ru.tinkoff.invest.openapi.OpenApi
-import ru.tinkoff.invest.openapi.model.rest.Portfolio
-import ru.tinkoff.invest.openapi.model.rest.SandboxRegisterRequest
-import ru.tinkoff.invest.openapi.model.rest.UserAccount
+import ru.tinkoff.invest.openapi.model.rest.*
 import ru.tinkoff.invest.openapi.okhttp.OkHttpOpenApi
 
-class TinkoffAPI(val token: String) {
-    val TAG = "TinkoffAPI"
+class TinkoffAPI() {
+    private val TAG = "TinkoffAPI"
     private val isSandbox: Boolean = false
-    private lateinit var tinkoff_api: OpenApi
+    lateinit var api: OpenApi
     var portfolios: MutableList<Portfolio> = mutableListOf()
+    var userAccounts: List<UserAccount> = listOf()
 
-    val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger("TAG")
+    //private val logger: org.slf4j.Logger = org.slf4j.LoggerFactory.getLogger("TAG")
 
-    fun init() {
-        try {
-            tinkoff_api = OkHttpOpenApi(token, isSandbox)
-        } catch(ex: Exception) {
-            Log.e(TAG, "Ошибка OkHttpOpenApi")
-            logger.error("Ошибка OkHttpOpenApi")
-        }
+    companion object {
+        // Singleton prevents multiple instances of API opening at the
+        // same time.
+        @Volatile
+        private var INSTANCE: TinkoffAPI? = null
 
-        if (tinkoff_api.isSandboxMode) {
-            tinkoff_api.sandboxContext.performRegistration(SandboxRegisterRequest()).join()
-        }
-
-        val userAccounts: List<UserAccount> = tinkoff_api.userContext.accounts.get().accounts
-        for(a in userAccounts) {
-            val portfolio: Portfolio = tinkoff_api.portfolioContext.getPortfolio(a.brokerAccountId).join()
-            //Log.v(TAG, "$portfolio")
-            portfolios.add(portfolio)
+        fun getInstance(): TinkoffAPI {
+            // if the INSTANCE is not null, then return it,
+            // if it is, then create the API
+            return INSTANCE ?: synchronized(this) {
+                val instance = TinkoffAPI()
+                INSTANCE = instance
+                // return instance
+                instance
+            }
         }
     }
 
+    fun init(): Boolean {
+        try {
+            api = OkHttpOpenApi(TinkoffTokens().token, isSandbox)
+        } catch(ex: Exception) {
+            Log.e(TAG, "Ошибка OkHttpOpenApi")
+            //logger.error("Ошибка OkHttpOpenApi")
+        }
+
+        if (api.isSandboxMode) {
+            api.sandboxContext.performRegistration(SandboxRegisterRequest()).join()
+        }
+
+        //val userAccounts: List<UserAccount> = listOf()
+        try {
+            userAccounts = api.userContext.accounts.get().accounts
+        } catch(ex: Exception) {
+            return false
+        }
+
+        for(a in userAccounts) {
+            val portfolio: Portfolio = api.portfolioContext.getPortfolio(a.brokerAccountId).join()
+            //Log.v(TAG, "$portfolio")
+            portfolios.add(portfolio)
+        }
+
+        return true
+    }
+
+    fun getPortfolioName(pNum: Int): String {
+        if(userAccounts[pNum].brokerAccountType == BrokerAccountType.TINKOFF)
+             return "Брокерский $pNum+1"
+
+        return "ИИС"
+    }
+
+    // в центах/копейках
+    fun getPortfolioSum(pNum: Int): Long {
+        var sum: Long = 0
+        for(pos in portfolios[pNum].positions) {
+            sum =+ (pos.balance.scaleByPowerOfTen(2)).toLong()
+        }
+
+        return sum
+    }
+
+    fun getStocks(): List<MarketInstrument>? = api.marketContext.marketStocks.get().instruments
+    fun getBonds(): List<MarketInstrument>? = api.marketContext.marketBonds.get().instruments
+    fun getEtfs(): List<MarketInstrument>? = api.marketContext.marketEtfs.get().instruments
 }

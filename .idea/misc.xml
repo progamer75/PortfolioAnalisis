@@ -4,10 +4,15 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/activity_main.xml" value="0.3736413043478261" />
+        <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/activity_portfolio_list.xml" value="0.5380208333333333" />
+        <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/activity_settings.xml" value="0.5380208333333333" />
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/fragment_dashboard.xml" value="0.375" />
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/fragment_home.xml" value="0.375" />
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/fragment_notifications.xml" value="0.375" />
+        <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/fragment_portfolio.xml" value="0.5239583333333333" />
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/fragment_service.xml" value="0.37907608695652173" />
+        <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/item_portfolio.xml" value="0.5" />
+        <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/layout/portfolio_list.xml" value="0.5380208333333333" />
         <entry key="..\:/Android/PortfolioAnalisis/app/src/main/res/menu/bottom_nav_menu.xml" value="0.5380208333333333" />
       </map>
     </option>
