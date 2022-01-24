@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+    <data>
+        <variable
+            name="vm"
+            type="com.tvsoft.portfolioanalysis.ui.home.PortfolioFragmentViewModel" />
+    </data>
+<androidx.constraintlayout.widget.ConstraintLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context="com.tvsoft.portfolioanalysis.ui.home.PortfolioFragment">
 
     <LinearLayout
@@ -35,14 +41,14 @@
             android:text="Прибыль с учетом налогов: $9999 (25% годовых)"/>
     </LinearLayout>
 
-<!--    <androidx.recyclerview.widget.RecyclerView
+    <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/portfolio_recycler_view"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/title_layout"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layoutManager="GridLayoutManager" />
--->
+        app:layoutManager="LinearLayoutManager" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>
