@@ -1,12 +1,16 @@
 package com.tvsoft.portfolioanalysis
 
 import android.content.Context
-import android.util.Log
 import androidx.room.*
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.util.concurrent.Executors
 
 private val TAG = "TinkoffDB"
@@ -29,13 +33,6 @@ enum class CurrenciesDB(a: Int) {
 
         throw IllegalArgumentException("нет валюты: $s")
     }
-    
- /*   val values = mapOf(
-        "USD" to 0,
-        "RUB" to 1,
-        "EUR" to 2,
-        "GBP" to 3
-    )*/
 }
 
 enum class InstrumentsTypeDB(a: Int) {
@@ -99,6 +96,75 @@ enum class OperationTypesDB(a: Int) {
     }
 }
 
+class Converters {
+    @TypeConverter
+    fun fromTimestamp(value: Long?): OffsetDateTime? {
+        return value?.let { OffsetDateTime.of(LocalDateTime.ofEpochSecond(it, 0, ZoneOffset.UTC), ZoneOffset.UTC) }
+    }
+
+    @TypeConverter
+    fun dateToTimestamp(date: OffsetDateTime?): Long? {
+        return date?.toEpochSecond()
+    }
+
+    @TypeConverter
+    fun fromLD(value: Long?): LocalDate? {
+        return value?.let { LocalDate.ofEpochDay(it) }
+    }
+
+    @TypeConverter
+    fun dateToLD(date: LocalDate?): Long? {
+        return date?.toEpochDay()
+    }
+
+    @TypeConverter
+    fun currencyToInt(cur: CurrenciesDB?): Int? {
+        return cur?.ordinal
+    }
+
+    @TypeConverter
+    fun intToCurrency(id: Int): CurrenciesDB? {
+        return CurrenciesDB.values()[id]
+    }
+
+    @TypeConverter
+    fun instrumentTypeToInt(cur: InstrumentsTypeDB?): Int? {
+        return cur?.ordinal
+    }
+
+    @TypeConverter
+    fun intToInstrumentType(id: Int): InstrumentsTypeDB? {
+        return InstrumentsTypeDB.values()[id]
+    }
+
+    @TypeConverter
+    fun operationTypeToInt(cur: OperationTypesDB?): Int? {
+        return cur?.ordinal
+    }
+
+    @TypeConverter
+    fun intToOperationType(id: Int): OperationTypesDB? {
+        return OperationTypesDB.values()[id]
+    }
+}
+
+/**
+ ** ExchangeRates
+ */
+@Entity(tableName = "exchange_rate",
+        primaryKeys = [
+        "currency",
+        "date"])
+data class ExchangeRateDB(
+    val currency: CurrenciesDB,
+    val date: LocalDate,
+    val rate: Double
+) { constructor(e: ExchangeRate): this(
+    currency = e.currency,
+    date = e.date,
+    rate = e.rate
+)}
+
 /**
  ** PortfolioDB
  */
@@ -121,6 +187,8 @@ data class MarketInstrumentDB(
     val currency: CurrenciesDB,
     val name: String,
     val ticker: String,
+    val lot: Int,
+    val minQuantity: Int,
     val instrumentType: InstrumentsTypeDB
     ) {
         constructor(instr: ru.tinkoff.invest.openapi.model.rest.MarketInstrument):
@@ -128,15 +196,18 @@ data class MarketInstrumentDB(
                 currency = CurrenciesDB.valueOf(instr.currency.value),
                 name = instr.name,
                 ticker = instr.ticker,
+                lot = instr.lot ?: 0,
+                minQuantity = instr.minQuantity ?: 0,
                 instrumentType = InstrumentsTypeDB.valueOf(instr.type.value)
-                ) {}
+                ) {
+            }
     }
 
 /**
  * OperationDB
 **/
-fun bigDec2Double(a: java.math.BigDecimal?): Double {
-    return a?.toDouble() ?: 0.0
+fun bigDec2LongCent(a: java.math.BigDecimal?): Long {
+    return a?.multiply(BigDecimal.valueOf(100))?.toLong() ?: 0
 }
 @Entity(tableName = "operation",
 /*(foreignKeys = [ForeignKey(
@@ -152,35 +223,45 @@ data class OperationDB(
     @PrimaryKey var id: String,
     val portfolio: Int, //portfolioDB.id
     val figi: String,
-    val date: Long, // OffsetDateTime.toEpochSecond()
+    val date: OffsetDateTime, // OffsetDateTime.toEpochSecond()
     val currency: CurrenciesDB,
     val operationType: OperationTypesDB,
-    val payment: Double,
-    val price: Double,
+    val payment: Long,
+    val price: Long,
     val quantity: Int,
-    val commission: Double,
+    val commission: Long,
     val commissionCurrency: CurrenciesDB?) {
     constructor(p: Int, oper: ru.tinkoff.invest.openapi.model.rest.Operation):
         this(
             id = oper.id,
             portfolio = p,
             figi = oper.figi ?: "",
-            date = oper.date.toEpochSecond(),
+            date = oper.date,
             currency = CurrenciesDB.valueOf(oper.currency.value),
             operationType = OperationTypesDB.valueOf(oper.operationType.value),
-            payment = bigDec2Double(oper.payment),
-            price = bigDec2Double(oper.price),
-            quantity = oper.quantity ?: 0,
-            commission = bigDec2Double(oper.commission?.value),
+            payment = bigDec2LongCent(oper.payment),
+            price = bigDec2LongCent(oper.price),
+            quantity = oper.quantityExecuted ?: 0,
+            commission = bigDec2LongCent(oper.commission?.value),
             commissionCurrency = if(oper.commission != null)
                 CurrenciesDB.valueOf(oper.commission.currency.value) else
-                    null) {
-            if(oper.quantity != oper.quantityExecuted) Log.e(TAG, "${oper} Quantity != QuantityExecuted")
+                    CurrenciesDB.USD) {
+            //if(oper.quantity != oper.quantityExecuted) Log.e(TAG, "${oper} Quantity != QuantityExecuted")
         }
 }
 
 @Dao
 interface TinkoffDao {
+// ExchangeRatesDB
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRate(rate: ExchangeRateDB)
+
+    @Query("DELETE from exchange_rate")
+    suspend fun deleteAllRates()
+
+    @Query("Select rate from exchange_rate where currency=:currency and date=:date")
+    suspend fun getRate(currency: CurrenciesDB, date: OffsetDateTime): Double
+
 // PortfolioDB
     @Query("Select * from portfolio")
     suspend fun getAllPortfolio(): List<PortfolioDB>
@@ -202,7 +283,7 @@ interface TinkoffDao {
     suspend fun insertMarketInstrumentList(mi: List<MarketInstrumentDB>): List<Long>
 
     @Query("Select * from MarketInstrumentDB where figi = :figi")
-    fun getMarketInstrument(figi: String): MarketInstrumentDB?
+    suspend fun getMarketInstrument(figi: String): MarketInstrumentDB?
 
     @Query("DELETE from MarketInstrumentDB")
     suspend fun deleteAllMarketInstrument()
@@ -213,9 +294,12 @@ interface TinkoffDao {
         insertMarketInstrumentList(mi)
     }
 
-// OpeartionDB
+// OperationDB
     @Query("Select * from operation")
     suspend fun getAllOperation(): List<OperationDB>
+
+    @Query("Select * from operation where (portfolio=:portfolio and operationType=:oper and figi=:figi) order by date desc")
+    suspend fun getOperations(portfolio: Int, figi: String, oper:OperationTypesDB = OperationTypesDB.Buy): List<OperationDB>
 
     @Query("Select * from operation where id=:operId")
     suspend fun findOperationById(operId: String): List<OperationDB>
@@ -230,7 +314,8 @@ interface TinkoffDao {
     suspend fun deleteAllOperation()
 }
 
-@Database(entities = [PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 3, exportSchema = false)
+@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 2, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class TinkoffDB : RoomDatabase() {
     abstract val tinkoffDao: TinkoffDao
 

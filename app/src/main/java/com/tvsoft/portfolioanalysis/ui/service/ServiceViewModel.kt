@@ -4,8 +4,11 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.*
 import com.tvsoft.portfolioanalysis.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.tinkoff.invest.openapi.model.rest.OperationStatus
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -79,11 +82,14 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         }
     }
 
-    fun onLoadAllData() {
+    fun onLoadAllData() { // TODO Добавить прогрессбар для отображения прогресса загрузки начальных данных
         loadAllDataDone.value = false
         viewModelScope.launch {
+            tinkoffDao.deleteAllOperation()
+            tinkoffDao.deleteAllRates()
             loadInstruments()
             loadAllData()
+            loadExchangeRates()
         }
     }
 
@@ -91,11 +97,10 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         val api = tinkoffAPI.api
 
         tinkoffDao.deleteAllPortfolio()
-        TinkoffDB.portfolioList.clear()
+        TinkoffDB.portfolioList.clear() //TODO не красиво все это TinkoffDB и portfolioList
         var id: Int = 0
         for(account in tinkoffAPI.userAccounts) {
             // сначала загружаем портфели
-            id++
             val p = PortfolioDB(id, account.brokerAccountId, "")
             tinkoffDao.insertPortfolio(p)
             TinkoffDB.portfolioList.add(p)
@@ -116,22 +121,48 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
                 for(oper in operations) {
                     if(oper.status != OperationStatus.DONE)
                         continue
-                    if(tinkoffDao.findOperationById(oper.id).isNotEmpty()) // операция уже есть
+                    if(tinkoffDao.findOperationById(oper.id).isNotEmpty()) {// операция уже есть
+                        Log.i(TAG, "$oper")
                         continue
-                    //Log.i(TAG, "$oper")
+                    }
+
                     val operItem = OperationDB(id, oper)
                     tinkoffDao.insertOperation(operItem)
-
-                    Log.i(TAG, "${LocalDateTime.ofEpochSecond(operItem.date, 0, ZoneOffset.UTC)} / ${operItem.payment}")
                 }
             }
-            loadAllDataDone.value = true
+            id++
         }
+        loadAllDataDone.value = true
     }
 
     fun deleteAll() {
         viewModelScope.launch {
             tinkoffDao.deleteAllOperation()
+        }
+    }
+
+    fun onLoadExchangeRates() {
+        viewModelScope.launch {
+            loadExchangeRates()
+        }
+    }
+
+    private suspend fun loadExchangeRates() {
+        val rateApi = ExchangeRateAPI()
+        withContext(Dispatchers.IO) {
+            enumValues<CurrenciesDB>().forEach {
+                var date = LocalDate.of(2018, 3, 1)
+                val rateList =
+                    rateApi.getRate( it, date, LocalDate.now())
+
+                rateList.forEach {
+                    while(date <= it.date) {
+                        tinkoffDao.insertRate(ExchangeRateDB(it.currency, date, it.rate))
+                        //Log.i(TAG, "$date / ${it.rate}")
+                        date = date.plusDays(1)
+                    }
+                }
+            }
         }
     }
 }

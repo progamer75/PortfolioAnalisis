@@ -46,9 +46,22 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/title_layout"
+        app:layout_constraintTop_toBottomOf="@+id/title_layout"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layoutManager="LinearLayoutManager" />
+        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/floatingActionButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:clickable="true"
+        android:onClick="@{()->vm.onRefreshActivesList()}"
+        app:layout_constraintBottom_toBottomOf="@+id/portfolio_recycler_view"
+        app:layout_constraintEnd_toEndOf="@+id/portfolio_recycler_view"
+        app:srcCompat="@android:drawable/stat_notify_sync"
+        tools:ignore="SpeakableTextPresentCheck" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

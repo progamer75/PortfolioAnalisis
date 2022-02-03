@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -20,8 +21,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        /*val str = savedInstanceState?.getString(KEY, "") ?: ""
-        viewModel.setString(str)*/
 
         if (!viewModel.initTinkoff()) {
             Toast.makeText(this, "Ошибка связи!", Toast.LENGTH_SHORT).show()
@@ -31,7 +30,6 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val navView: BottomNavigationView = binding.navView
-
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
         // Passing each menu ID as a set of Ids because each
         // menu should be considered as top level destinations.
@@ -43,7 +41,12 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         navView.setupWithNavController(navController)
 
-        Log.i(TAG, viewModel.toString())
+        supportActionBar?.hide()
+        //supportActionBar?.setDisplayShowTitleEnabled(false)
+        //supportActionBar?.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM)
+        //supportActionBar?.setCustomView(R.layout.toolbar_title)
+        //textView: TextView = supportActionBar?.customView.findViewById(R.id.toolbar_title);
+        //textView.setText("My Custom Title");
 
         //TODO проверить заведен ли токен, если нет, то открыть SettingsActivity
 //        val portfolioListActivity = Intent(this, SettingsActivity::class.java)

@@ -7,13 +7,12 @@ import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.viewpager2.adapter.FragmentStateAdapter
-import com.tvsoft.portfolioanalysis.R
 import com.tvsoft.portfolioanalysis.TinkoffAPI
-import com.tvsoft.portfolioanalysis.TinkoffDB
-import com.tvsoft.portfolioanalysis.databinding.FragmentHomeBinding
 import com.tvsoft.portfolioanalysis.databinding.ItemPortfolioBinding
 
+private const val TAG = "PortfolioFragment"
 private const val ARG_PARAM1 = "portfolioNum"
 
 /**
@@ -43,7 +42,8 @@ class PortfolioFragment : Fragment() {
 
         val portfolioAdapter = PortfolioAdapter()
         binding.portfolioRecyclerView.adapter = portfolioAdapter
-        viewModel.activesList.observe(viewLifecycleOwner, Observer {
+        binding.portfolioRecyclerView.layoutManager = LinearLayoutManager(activity)
+        viewModel.rowList.observe(viewLifecycleOwner, Observer {
             it?.let{
                 portfolioAdapter.data = it
             }
