@@ -154,11 +154,15 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
                 var date = LocalDate.of(2018, 3, 1)
                 val rateList =
                     rateApi.getRate( it, date, LocalDate.now())
-
+                var prevRate = 0.0
                 rateList.forEach {
                     while(date <= it.date) {
-                        tinkoffDao.insertRate(ExchangeRateDB(it.currency, date, it.rate))
-                        //Log.i(TAG, "$date / ${it.rate}")
+                        if(date == it.date) {
+                            prevRate = it.rate
+                        }
+                        tinkoffDao.insertRate(ExchangeRateDB(it.currency, date, prevRate))
+                        //Log.i(TAG, "${it.currency} / $date / ${prevRate} / ${it.date}")
+
                         date = date.plusDays(1)
                     }
                 }

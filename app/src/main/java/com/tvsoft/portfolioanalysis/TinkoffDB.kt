@@ -33,6 +33,20 @@ enum class CurrenciesDB(a: Int) {
 
         throw IllegalArgumentException("нет валюты: $s")
     }
+
+    fun itName(): String {
+        return when(this) {
+            USD -> "USD"
+            RUB -> "RUB"
+            EUR -> "EUR"
+            GBP -> "GBP"
+            HKD -> "HKD"
+            CHF -> "CHF"
+            JPY -> "JPY"
+            CNY -> "CNY"
+            TRY -> "TRY"
+        }
+    }
 }
 
 enum class InstrumentsTypeDB(a: Int) {
@@ -165,6 +179,10 @@ data class ExchangeRateDB(
     rate = e.rate
 )}
 
+data class SumOf(
+    val sumOf: Long
+)
+
 /**
  ** PortfolioDB
  */
@@ -260,7 +278,14 @@ interface TinkoffDao {
     suspend fun deleteAllRates()
 
     @Query("Select rate from exchange_rate where currency=:currency and date=:date")
-    suspend fun getRate(currency: CurrenciesDB, date: OffsetDateTime): Double
+    suspend fun _getRate(currency: CurrenciesDB, date: LocalDate): Double
+
+    suspend fun getRate(currency: CurrenciesDB, date: LocalDate): Double {
+        return if(currency == CurrenciesDB.RUB)
+            1.0
+        else
+            _getRate(currency, date)
+    }
 
 // PortfolioDB
     @Query("Select * from portfolio")
@@ -300,6 +325,18 @@ interface TinkoffDao {
 
     @Query("Select * from operation where (portfolio=:portfolio and operationType=:oper and figi=:figi) order by date desc")
     suspend fun getOperations(portfolio: Int, figi: String, oper:OperationTypesDB = OperationTypesDB.Buy): List<OperationDB>
+
+    @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+            " and figi=:figi and date >= :from)")
+    suspend fun getDividends(portfolio: Int, figi: String, from: OffsetDateTime,
+                             oper:List<OperationTypesDB> = listOf(OperationTypesDB.Dividend,
+                                OperationTypesDB.Coupon)): SumOf
+
+    @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+            " and figi=:figi and date >= :from)")
+    suspend fun getDividendsTax(portfolio: Int, figi: String, from: OffsetDateTime,
+                                oper:List<OperationTypesDB> = listOf(OperationTypesDB.TaxDividend,
+                                OperationTypesDB.TaxCoupon)): SumOf
 
     @Query("Select * from operation where id=:operId")
     suspend fun findOperationById(operId: String): List<OperationDB>

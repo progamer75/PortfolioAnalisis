@@ -77,6 +77,11 @@ class TinkoffAPI() {
         return sum
     }
 
+    fun getPriceByFigi(figi: String): Double {
+        val orderbook = api.marketContext.getMarketOrderbook(figi, 1).get()
+        return orderbook.get().lastPrice.toDouble()
+    }
+
     fun getStocks(): List<MarketInstrument>? = api.marketContext.marketStocks.get().instruments
     fun getBonds(): List<MarketInstrument>? = api.marketContext.marketBonds.get().instruments
     fun getEtfs(): List<MarketInstrument>? = api.marketContext.marketEtfs.get().instruments

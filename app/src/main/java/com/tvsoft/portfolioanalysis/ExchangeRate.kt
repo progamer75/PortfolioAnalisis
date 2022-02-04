@@ -82,6 +82,54 @@ class ExchangeRateAPI {
         return list
     }
 
+    suspend fun getLastRate(currency: CurrenciesDB): Double {
+        var result: Double = 1.0
+        if(currency == CurrenciesDB.RUB)
+            return result
+
+        val urlString = "https://cbr.ru/scripts/XML_daily.asp"
+        val url = URL(urlString)
+        val conn: HttpURLConnection = url.openConnection() as HttpURLConnection
+        try {
+            conn.readTimeout = 5000
+            conn.connectTimeout = 5000
+            conn.requestMethod = "GET"
+            conn.doInput = true
+            conn.connect()
+            val stream = conn.inputStream
+
+            val doc: Document = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(stream)
+            val element: Element = doc.documentElement
+            element.normalize()
+
+            val nList: NodeList = doc.getElementsByTagName("Valute")
+            for(i in 0 until nList.length) {
+                val node = nList.item(i)
+                if(node.nodeType != Node.ELEMENT_NODE)
+                    continue
+
+                val elem = node as Element
+                val name: String = elem.getElementsByTagName("CharCode").item(0).textContent
+                if(name != currency.itName())
+                    continue
+                val nominal: Int = elem.getElementsByTagName("Nominal").item(0).textContent.toInt()
+                val value: Double = elem.getElementsByTagName("Value").item(0).textContent.
+                replace(',', '.').toDouble()
+                result = value / nominal
+
+                break
+            }
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            conn?.disconnect()
+        }
+
+        return result
+    }
+
+
 /*    @Throws(IOException::class)
     private fun downloadUrl(urlString: String): InputStream? {
         val url = URL(urlString)
@@ -114,3 +162,4 @@ class ExchangeRateAPI {
         return xml
     }*/
 }
+

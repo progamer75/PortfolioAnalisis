@@ -23,6 +23,10 @@ class PortfolioAdapter: RecyclerView.Adapter<PortfolioAdapter.RowViewHolder>() {
         return RowViewHolder(view)
     }
 
+    fun formatSum(sum: Double): String {
+        return ""
+    }
+
     override fun onBindViewHolder(holder: RowViewHolder, position: Int) {
         val item = data[position]
         /*val balance = item.balance
@@ -30,6 +34,8 @@ class PortfolioAdapter: RecyclerView.Adapter<PortfolioAdapter.RowViewHolder>() {
         holder.name.text = "${item.name}"
         holder.profit.text = "${item.profit}"
         holder.dividends.text = "${item.dividends}"
+        holder.earliestDate.text = "${item.earliestDate}"
+        holder.averageRate.text = "${item.averageRate}"
         holder.tax.text = "${item.tax}"
         holder.profitWithoutTax.text = "${item.profitWithoutTax}"
     }
@@ -40,6 +46,8 @@ class PortfolioAdapter: RecyclerView.Adapter<PortfolioAdapter.RowViewHolder>() {
         val name: TextView = view.findViewById(R.id.name)
         val profit: TextView = view.findViewById(R.id.profit)
         val dividends: TextView = view.findViewById(R.id.dividends)
+        val earliestDate: TextView = view.findViewById(R.id.earliestDate)
+        val averageRate: TextView = view.findViewById(R.id.averageRate)
         val tax: TextView = view.findViewById(R.id.tax)
         val profitWithoutTax: TextView = view.findViewById(R.id.profitWithoutTax)
     }
