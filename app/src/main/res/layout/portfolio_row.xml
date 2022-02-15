@@ -1,46 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="horizontal">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <TextView
-        android:id="@+id/name"
-        android:layout_width="100dp"
-        android:layout_height="match_parent"
-        android:text="111" />
-    <TextView
-        android:id="@+id/profit"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
-        />
-    <TextView
-        android:id="@+id/dividends"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
-        />
-    <TextView
-        android:id="@+id/earliestDate"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
-        />
-    <TextView
-        android:id="@+id/averageRate"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
-        />
-    <TextView
-        android:id="@+id/tax"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
-        />
-    <TextView
-        android:id="@+id/profitWithoutTax"
-        android:layout_width="60dp"
-        android:layout_height="match_parent"
+    <data>
+        <variable
+            name="row"
+            type="com.tvsoft.portfolioanalysis.ui.home.PortfolioRow" />
+        <variable
+            name="vm"
+            type="com.tvsoft.portfolioanalysis.ui.home.PortfolioFragmentViewModel" />
+    </data>
 
-        />
-</LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/cell_height"
+        android:orientation="horizontal">
+
+<!--        <TextView
+            android:id="@+id/name"
+            android:layout_width="100dp"
+            android:layout_height="match_parent"
+            android:text="@{row.name}"
+            android:textAlignment="textStart"
+            />-->
+
+        <TextView
+            android:id="@+id/profit"
+            android:layout_width="@dimen/money_width"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            app:money="@{row.profit}"
+            app:currency="@{row.currency.symbol()}"
+            />
+
+        <TextView
+            android:id="@+id/dividends"
+            android:layout_width="@dimen/money_width"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            app:money="@{row.dividends}"
+            app:currency="@{row.currency.symbol()}"
+            />
+
+        <TextView
+            android:id="@+id/earliestDate"
+            android:layout_width="80dp"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            android:text="@{row.earliestDate}"/>
+
+        <TextView
+            android:id="@+id/averageRate"
+            android:layout_width="60dp"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            android:text="@{row.averageRate}"/>
+
+        <TextView
+            android:id="@+id/tax"
+            android:layout_width="@dimen/money_width"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            app:money="@{row.tax}"
+            app:currency="@{row.currency.rubSymbol()}"
+            />
+
+        <TextView
+            android:id="@+id/profitWithoutTax"
+            android:layout_width="@dimen/money_width"
+            android:layout_height="match_parent"
+            android:textAlignment="textEnd"
+            app:money="@{row.profitWithoutTax}"
+            app:currency="@{row.currency.symbol()}"
+            />
+    </LinearLayout>
+
+</layout>

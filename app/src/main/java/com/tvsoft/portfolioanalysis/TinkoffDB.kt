@@ -11,6 +11,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
+import java.util.*
 import java.util.concurrent.Executors
 
 private val TAG = "TinkoffDB"
@@ -47,6 +48,22 @@ enum class CurrenciesDB(a: Int) {
             TRY -> "TRY"
         }
     }
+
+    fun symbol(): String {
+        return when(this) {
+            USD -> '\u0024'.toString()
+            RUB -> '\u20BD'.toString()
+            EUR -> '\u20AC'.toString()
+            GBP -> '\u00A3'.toString()
+            HKD -> '\u0024'.toString()
+            CHF -> '\u20A3'.toString()
+            JPY -> '\u00A5'.toString()
+            CNY -> '\u04B0'.toString()
+            TRY -> '\u20BA'.toString()
+        }
+    }
+
+    fun rubSymbol(): String = '\u20BD'.toString()
 }
 
 enum class InstrumentsTypeDB(a: Int) {

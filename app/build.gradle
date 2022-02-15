@@ -25,9 +25,12 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
-    dataBinding {
-        enabled = true
+
+    buildFeatures {
+        dataBinding true
+        viewBinding true
     }
+
     compileOptions {
         // для использования OffsetDateTime на API < 26
         coreLibraryDesugaringEnabled = true
@@ -35,11 +38,9 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
     kotlinOptions {
         jvmTarget = '1.8'
-    }
-    buildFeatures {
-        viewBinding true
     }
 }
 

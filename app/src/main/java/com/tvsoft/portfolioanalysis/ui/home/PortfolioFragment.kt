@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.tvsoft.portfolioanalysis.TinkoffAPI
 import com.tvsoft.portfolioanalysis.databinding.ItemPortfolioBinding
@@ -24,7 +25,6 @@ class PortfolioFragment : Fragment() {
     private var portfolioNum: Int = 0
     private lateinit var viewModel: PortfolioFragmentViewModel
     private var _binding: ItemPortfolioBinding? = null
-
     private val binding get() = _binding!!
 
     override fun onCreateView(
@@ -40,19 +40,34 @@ class PortfolioFragment : Fragment() {
         binding.vm = viewModel
         val root: View = binding.root
 
-        val portfolioAdapter = PortfolioAdapter()
-        binding.portfolioRecyclerView.adapter = portfolioAdapter
-        binding.portfolioRecyclerView.layoutManager = LinearLayoutManager(activity)
+        val portfolioAdapter = PortfolioAdapter(false)
+        val portfolioRV = binding.portfolioRecyclerView
+        portfolioRV.adapter = portfolioAdapter
+        portfolioRV.layoutManager = LinearLayoutManager(activity)
+        portfolioRV.addItemDecoration(PortfolioItemDecoration())
+
+        val headerAdapter = PortfolioAdapter(true)
+        val headerRV = binding.headerRecyclerView
+        headerRV.adapter = headerAdapter
+        headerRV.layoutManager = LinearLayoutManager(activity)
+
+        val portfolioScrollListener = RelatedRVOnScrollListener(headerRV)
+        portfolioRV.addOnScrollListener(portfolioScrollListener)
+        val headerScrollListener = RelatedRVOnScrollListener(portfolioRV)
+        headerRV.addOnScrollListener(headerScrollListener)
+        portfolioScrollListener.setRelatedScrollListener(headerScrollListener)
+        headerScrollListener.setRelatedScrollListener(portfolioScrollListener)
+
+
         viewModel.rowList.observe(viewLifecycleOwner, Observer {
             it?.let{
-                portfolioAdapter.data = it
+                headerAdapter.submitList(it)
+                portfolioAdapter.submitList(it)//portfolioAdapter.data = it
             }
         })
 
         binding.lifecycleOwner = this
 
-        // Inflate the layout for this fragment
-        //return inflater.inflate(R.layout.item_portfolio, container, false)
         return root
     }
 
@@ -60,6 +75,23 @@ class PortfolioFragment : Fragment() {
         arguments?.takeIf { it.containsKey(ARG_PARAM1) }?.apply {
             portfolioNum = getInt(ARG_PARAM1)
         }
+    }
+}
+
+class RelatedRVOnScrollListener(private val related: RecyclerView) : RecyclerView.OnScrollListener() {
+    private var relatedScrollListener: RecyclerView.OnScrollListener? = null
+
+    override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+        super.onScrolled(recyclerView, dx, dy)
+        relatedScrollListener?.let {
+            related.removeOnScrollListener(it)
+            related.scrollBy(dx, dy)
+            related.addOnScrollListener(it)
+        }
+    }
+
+    fun setRelatedScrollListener(_relatedScrollListener: RecyclerView.OnScrollListener) {
+        relatedScrollListener = _relatedScrollListener
     }
 }
 

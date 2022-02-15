@@ -7,17 +7,19 @@
             name="vm"
             type="com.tvsoft.portfolioanalysis.ui.home.PortfolioFragmentViewModel" />
     </data>
+
 <androidx.constraintlayout.widget.ConstraintLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:paddingBottom="64dp"
     tools:context="com.tvsoft.portfolioanalysis.ui.home.PortfolioFragment">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="vertical"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        android:orientation="vertical"
         android:id="@+id/title_layout">
 
         <TextView
@@ -26,8 +28,6 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:textSize="14sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
             android:text="Стоимость: $1234" />
 
         <TextView
@@ -36,19 +36,102 @@
             android:layout_height="wrap_content"
             android:layout_margin="4dp"
             android:textSize="14sp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvSum"
             android:text="Прибыль с учетом налогов: $9999 (25% годовых)"/>
     </LinearLayout>
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/portfolio_recycler_view"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/title_layout"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="@id/title_layout"
+        app:layout_constraintTop_toBottomOf="@id/title_layout"
+        >
+
+        <LinearLayout
+            android:layout_width="@dimen/name_width"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/name"
+                android:layout_width="match_parent"
+                android:layout_height="@dimen/header_height"
+                android:text="Наименование"
+                android:textAlignment="textStart"
+                />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/header_recycler_view"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                />
+        </LinearLayout>
+
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            >
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="@dimen/header_height"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/profit"
+                        android:layout_width="@dimen/money_width"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Профит"
+                        />
+                    <TextView
+                        android:id="@+id/dividends"
+                        android:layout_width="@dimen/money_width"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Дивиденды"
+                        />
+                    <TextView
+                        android:id="@+id/earliestDate"
+                        android:layout_width="80dp"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Дата покупки"
+                        />
+                    <TextView
+                        android:id="@+id/averageRate"
+                        android:layout_width="60dp"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Курс"
+                        />
+                    <TextView
+                        android:id="@+id/tax"
+                        android:layout_width="@dimen/money_width"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Налоги"
+                        />
+                    <TextView
+                        android:id="@+id/profitWithoutTax"
+                        android:layout_width="@dimen/money_width"
+                        android:layout_height="match_parent"
+                        android:textAlignment="textEnd"
+                        android:text="Итого профит"
+                        />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/portfolio_recycler_view"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+                    />
+            </LinearLayout>
+        </HorizontalScrollView>
+    </LinearLayout>
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/floatingActionButton"
@@ -58,8 +141,8 @@
         android:layout_marginBottom="16dp"
         android:clickable="true"
         android:onClick="@{()->vm.onRefreshActivesList()}"
-        app:layout_constraintBottom_toBottomOf="@+id/portfolio_recycler_view"
-        app:layout_constraintEnd_toEndOf="@+id/portfolio_recycler_view"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@android:drawable/stat_notify_sync"
         tools:ignore="SpeakableTextPresentCheck" />
 

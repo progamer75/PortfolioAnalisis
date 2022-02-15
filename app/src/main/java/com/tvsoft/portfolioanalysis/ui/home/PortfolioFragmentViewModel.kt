@@ -9,27 +9,27 @@ import kotlinx.coroutines.withContext
 import ru.tinkoff.invest.openapi.model.rest.InstrumentType
 import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.util.*
 
 private const val TAG = "PortfolioFragmentViewModel"
 
 data class PortfolioRow(
-    var name: String,
+    val figi: String,
+    val name: String,
+    val currency: CurrenciesDB,
     var profit: Double = 0.0,
     var dividends: Double = 0.0,
     var tax: Double = 0.0,
-    var earliestDate: LocalDate = LocalDate.now(),
+    var earliestDate: LocalDate = LocalDate.now(), // самая ранняя дата покупки
     var averageRate: Double = 0.0, // средний курс на даты покупок
-    var profitWithoutTax: Double = 0.0
-){
-}
+    var profitWithoutTax: Double = 0.0 // профит с дивидендами за вычетом налогов и комиссий
+)
 
 class PortfolioFragmentViewModel(private val portfolioNum: Int, application: Application) :
     AndroidViewModel(application) {
     private val tinkoffDao = TinkoffDB.getDatabase(application).tinkoffDao
     private val tinkoffApi = TinkoffAPI.getInstance()
     val rowList = MutableLiveData<List<PortfolioRow>>()
-    init {
-    }
 
     fun onRefreshActivesList() {
         viewModelScope.launch {
@@ -51,7 +51,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             }
             var earliestOffsetDate = OffsetDateTime.now()
             val posQuantity = pos.balance.toInt() //pos.lots * instr.lot
-            val row = PortfolioRow(pos.name).apply{
+            val row = PortfolioRow(pos.figi, pos.name, instr.currency).apply{
                 var buyQuantity: Int = 0
                 var buySumRub: Double = 0.0
                 val buys = tinkoffDao.getOperations(portfolioNum, pos.figi)
@@ -82,7 +82,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 averageRate = if(instr.currency == CurrenciesDB.RUB)
                     1.0
                 else
-                    round2(buySumRub / buySum)
+                    Utils.round2(buySumRub / buySum)
 
                 profit = pos.expectedYield.value.toDouble() // + commission
                 val commissionRub: Double = -commission.toDouble() / 100.0
@@ -95,15 +95,21 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 if(lastRate > 0.000001) {
                     val sellSumRub = posQuantity * price * lastRate
                     //Log.i(TAG, "$price / $lastRate / $sellSumRub / $buySumRub")
-                    tax = round2(if(sellSumRub > buySumRub) (sellSumRub - buySumRub) * 0.13 else 0.0) // в рублях
+                    tax = Utils.round2(if(sellSumRub > buySumRub) (sellSumRub - buySumRub) * 0.13 else 0.0) // в рублях
                     profitWithoutTax =
-                        round2(profit + dividends - (commissionRub + tax) / lastRate)  //pos.averagePositionPrice?.value?.toDouble() ?: 0.0
+                        Utils.round2(profit + dividends - (commissionRub + tax) / lastRate)  //pos.averagePositionPrice?.value?.toDouble() ?: 0.0
                 }
             }
             list.add(row)
         }
 
         rowList.value = list
+    }
+
+    //TODO В заголовок добавить текущий курс ЦБ
+
+    fun showMoney2(): String {
+        return "123"//String.format("%.2f", value) + " " + cur.itName()
     }
 }
 
