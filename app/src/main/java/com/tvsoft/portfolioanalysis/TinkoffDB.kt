@@ -295,9 +295,9 @@ interface TinkoffDao {
     suspend fun deleteAllRates()
 
     @Query("Select rate from exchange_rate where currency=:currency and date=:date")
-    suspend fun _getRate(currency: CurrenciesDB, date: LocalDate): Double
+    suspend fun _getRate(currency: CurrenciesDB, date: LocalDate): Double?
 
-    suspend fun getRate(currency: CurrenciesDB, date: LocalDate): Double {
+    suspend fun getRate(currency: CurrenciesDB, date: LocalDate): Double? {
         return if(currency == CurrenciesDB.RUB)
             1.0
         else

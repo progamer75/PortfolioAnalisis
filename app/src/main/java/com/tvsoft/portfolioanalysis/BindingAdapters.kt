@@ -16,8 +16,8 @@ fun setText(view: TextView, value: LocalDate) {
 }
 
 @BindingAdapter(value = ["app:money", "app:currency"], requireAll = false)
-fun setText(view: TextView, value: Double, currency: String) {
-        view.text = String.format("%.2f", value) + currency
+fun setText(view: TextView, value: Double, currency: CurrenciesDB) {
+        view.text = Utils.moneyFormat(value, currency)
 }
 
 /*@BindingAdapter("app:money")

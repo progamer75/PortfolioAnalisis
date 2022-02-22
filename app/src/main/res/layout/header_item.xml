@@ -12,7 +12,8 @@
         android:layout_height="@dimen/cell_height"
         android:text="@{row.name}"
         android:textAlignment="textStart"
-        android:background="@color/teal_700"
+        android:textSize="@dimen/cellTextSize"
+        android:background="@drawable/border"
         />
 
 </layout>
