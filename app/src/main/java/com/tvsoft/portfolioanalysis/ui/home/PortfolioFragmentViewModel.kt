@@ -205,6 +205,19 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 _portfolioProfitRub += profit * lastRate
                 _portfolioProfitUsd += moneyConvert(profit, instr.currency, lastRate, CurrenciesDB.USD, _lastUSDRate)
             }
+            // по закрытым сделкам:
+            val daysAgo: Long =
+                when(period) {
+                    Periods.AllTime -> 0
+                    Periods.Year -> 365
+                    Periods.Quarter -> 90
+                    Periods.Month -> 30
+                }
+            val firstDate = if(daysAgo == 0L)
+                    LocalDate.of(2010, 1, 1)
+                else
+                    LocalDate.now().minusDays(daysAgo)
+
             list.add(row)
         }
 
@@ -251,8 +264,6 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
         portfolioTotalProfitIrrRub.value = percentFormat(_portfolioTotalProfitIrrRub)
         portfolioTotalProfitIrrUsd.value = percentFormat(_portfolioTotalProfitIrrUsd)
     }
-
-    //TODO В заголовок добавить текущий курс ЦБ
 }
 
 class PortfolioFragmentViewModelFactory(private val portfolioNum: Int,

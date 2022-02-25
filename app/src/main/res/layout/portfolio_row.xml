@@ -16,80 +16,62 @@
         android:layout_height="@dimen/cell_height"
         android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/balance"
-            android:layout_width="@dimen/money_width"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            app:money="@{row.balance}"
-            app:currency="@{row.currency}"
-            android:background="@drawable/border"
+        <LinearLayout
+            style="@style/PortfolioDataLayout">
+            <TextView
+                style="@style/PortfolioDataText"
+                app:money="@{row.balance}"
+                app:currency="@{row.currency}"
+                />
+            <TextView
+                style="@style/PortfolioDataText"
+            />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/PortfolioDataLayout">
+            <TextView
+                style="@style/PortfolioDataText"
+                app:money="@{row.profitWithoutTax}"
+                app:currency="@{row.currency}"
+                />
+            <TextView
+                style="@style/PortfolioDataText"
+                app:money="@{row.profitWithoutTax}"
+                app:currency="@{row.currency}"
+                />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/PortfolioDataLayout">
+            <TextView
+                android:id="@+id/tax"
+                style="@style/PortfolioDataText"
+                app:money="@{row.tax}"
+                app:currency="@{row.currency.RUB}"
             />
 
-        <TextView
-            android:id="@+id/profit"
-            android:layout_width="@dimen/money_width"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            app:money="@{row.profit}"
-            app:currency="@{row.currency}"
-            android:background="@drawable/border"
+            <TextView
+                android:id="@+id/averageRate"
+                style="@style/PortfolioDataText"
+                android:text="@{row.averageRate}"
+            />
+        </LinearLayout>
+
+        <LinearLayout
+            style="@style/PortfolioDataLayout">
+            <TextView
+                android:id="@+id/dividends"
+                style="@style/PortfolioDataText"
+                app:money="@{row.dividends}"
+                app:currency="@{row.currency}"
             />
 
-        <TextView
-            android:id="@+id/dividends"
-            android:layout_width="@dimen/money_width"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            app:money="@{row.dividends}"
-            app:currency="@{row.currency}"
-            android:background="@drawable/border"
+            <TextView
+                style="@style/PortfolioDataText"
+                app:money="@{row.dividends}"
+                app:currency="@{row.currency}"
             />
-
-        <TextView
-            android:id="@+id/earliestDate"
-            android:layout_width="80dp"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            android:text="@{row.earliestDate}"
-            android:background="@drawable/border"
-            />
-
-        <TextView
-            android:id="@+id/averageRate"
-            android:layout_width="60dp"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            android:text="@{row.averageRate}"
-            android:background="@drawable/border"
-            />
-
-        <TextView
-            android:id="@+id/tax"
-            android:layout_width="@dimen/money_width"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            app:money="@{row.tax}"
-            app:currency="@{row.currency.RUB}"
-            android:background="@drawable/border"
-            />
-
-        <TextView
-            android:id="@+id/profitWithoutTax"
-            android:layout_width="@dimen/money_width"
-            android:layout_height="match_parent"
-            android:textAlignment="textEnd"
-            android:textSize="@dimen/cellTextSize"
-            app:money="@{row.profitWithoutTax}"
-            app:currency="@{row.currency}"
-            android:background="@drawable/border"
-            />
+        </LinearLayout>
     </LinearLayout>
-
 </layout>

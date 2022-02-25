@@ -15,8 +15,22 @@
 
     <style name="PortfolioHeaderText">
         <item name="android:layout_height">match_parent</item>
-        <item name="android:textAlignment">center</item>
+        <item name="android:gravity">center</item>
         <item name="android:textSize">@dimen/cellTextSize</item>
+        <item name="android:background">@drawable/border</item>
+    </style>
+
+    <style name="PortfolioDataText">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">@dimen/text_height</item>
+        <item name="android:textAlignment">textEnd</item>
+        <item name="android:textSize">@dimen/cellTextSize</item>
+    </style>
+
+    <style name="PortfolioDataLayout">
+        <item name="android:layout_width">@dimen/money_width</item>
+        <item name="android:layout_height">@dimen/cell_height</item>
+        <item name="android:orientation">vertical</item>
         <item name="android:background">@drawable/border</item>
     </style>
 
