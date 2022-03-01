@@ -1,7 +1,6 @@
 package com.tvsoft.portfolioanalysis.ui.home
 
 import android.app.Application
-import android.util.Log
 import android.view.View
 import android.widget.AdapterView
 import androidx.lifecycle.*
@@ -9,13 +8,15 @@ import com.tvsoft.portfolioanalysis.*
 import com.tvsoft.portfolioanalysis.Utils.Companion.moneyConvert
 import com.tvsoft.portfolioanalysis.Utils.Companion.moneyFormat
 import com.tvsoft.portfolioanalysis.Utils.Companion.percentFormat
+import com.tvsoft.portfolioanalysis.businesslogic.CalcData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.tinkoff.invest.openapi.model.rest.InstrumentType
-import ru.tinkoff.invest.openapi.model.rest.MarketInstrumentList
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 private const val TAG = "PortfolioFragmentViewModel"
 
@@ -29,7 +30,8 @@ data class PortfolioRow(
     var tax: Double = 0.0,
     var earliestDate: LocalDate = LocalDate.now(), // самая ранняя дата покупки
     var averageRate: Double = 0.0, // средний курс на даты покупок
-    var profitWithoutTax: Double = 0.0 // профит с дивидендами за вычетом налогов и комиссий
+    var profitWithoutTax: Double = 0.0, // профит с дивидендами за вычетом налогов и комиссий
+    var profitWithoutTaxClosed: Double = 0.0
 )
 
 data class PortfolioStat(
@@ -42,6 +44,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
     AndroidViewModel(application) {
     private val tinkoffDao = TinkoffDB.getDatabase(application).tinkoffDao
     private val tinkoffApi = TinkoffAPI.getInstance()
+    private val calcData = CalcData(tinkoffDao, portfolioNum)
     val rowList = MutableLiveData<List<PortfolioRow>>()
     var profitMap = mutableMapOf<CurrenciesDB, Double>()
     var period: Periods = Periods.Year
@@ -101,6 +104,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
 
     fun onRefreshActivesList() {
         viewModelScope.launch {
+            calcData.calcAllData()
             refreshActivesList()
         }
     }
@@ -125,6 +129,22 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
         var _portfolioTotalProfitUsd: Double = 0.0
         var _portfolioTotalProfitIrrRub: Double = 0.0
         var _portfolioTotalProfitIrrUsd: Double = 0.0
+
+        // по закрытым сделкам:
+        val daysAgo: Long =
+            when(period) {
+                Periods.AllTime -> 0
+                Periods.Year -> 365
+                Periods.Quarter -> 90
+                Periods.Month -> 30
+            }
+        val firstDate:LocalDateTime = if(daysAgo == 0L)
+            LocalDateTime.of(2010, 1, 1, 0, 0, 0, 0)
+        else
+            LocalDateTime.now().minusDays(daysAgo)
+        val lastDate = LocalDateTime.now()
+        val firstDateOffset = OffsetDateTime.of(firstDate, ZoneOffset.UTC)
+        val lastDateOffset = OffsetDateTime.of(lastDate, ZoneOffset.UTC)
 
         _lastUSDRate =
             withContext(Dispatchers.IO) {
@@ -197,6 +217,15 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                     tax = Utils.round2(if(sellSumRub > buySumRub) (sellSumRub - buySumRub) * 0.13 else 0.0) // в рублях
                     profitWithoutTax =
                         Utils.round2(profit + dividends - (commissionRub + tax) / lastRate)  //pos.averagePositionPrice?.value?.toDouble() ?: 0.0
+
+                    val closedList = calcData.dealList.filter { it.figi == instr.figi &&
+                            it.date > firstDateOffset &&
+                            it.date < lastDateOffset }
+                    val profitClosed = closedList.sumOf { it.profit }
+                    val dividendsClosed = tinkoffDao.getDividends(portfolioNum, instr.figi, firstDateOffset, earliestOffsetDate).sumOf -
+                            tinkoffDao.getDividendsTax(portfolioNum, instr.figi, firstDateOffset, earliestOffsetDate).sumOf
+                    val taxClosed = closedList.sumOf { it.tax / it.rate } // в рублях
+                    profitWithoutTaxClosed = Utils.round2(profitClosed + dividendsClosed - taxClosed)
                 }
 
                 _portfolioBalanceRub += sellSumRub
@@ -205,18 +234,6 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 _portfolioProfitRub += profit * lastRate
                 _portfolioProfitUsd += moneyConvert(profit, instr.currency, lastRate, CurrenciesDB.USD, _lastUSDRate)
             }
-            // по закрытым сделкам:
-            val daysAgo: Long =
-                when(period) {
-                    Periods.AllTime -> 0
-                    Periods.Year -> 365
-                    Periods.Quarter -> 90
-                    Periods.Month -> 30
-                }
-            val firstDate = if(daysAgo == 0L)
-                    LocalDate.of(2010, 1, 1)
-                else
-                    LocalDate.now().minusDays(daysAgo)
 
             list.add(row)
         }

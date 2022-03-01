@@ -37,8 +37,6 @@ class PortfolioAdapter(private val header: Boolean): ListAdapter<PortfolioRow, R
  //   override fun getItemCount(): Int = data.size
 
     class RowViewHolder private constructor(val binding: PortfolioRowBinding): RecyclerView.ViewHolder(binding.root) {
-        val res = itemView.context.resources
-
         fun bind(item: PortfolioRow) {
             binding.row = item
             binding.executePendingBindings()

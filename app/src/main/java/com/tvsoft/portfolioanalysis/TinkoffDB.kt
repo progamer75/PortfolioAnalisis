@@ -255,17 +255,19 @@ fun bigDec2LongCent(a: java.math.BigDecimal?): Long {
         Index(value = ["date"]),
         Index(value = ["operationType"])])
 data class OperationDB(
-    @PrimaryKey var id: String,
+    @PrimaryKey val id: String,
     val portfolio: Int, //portfolioDB.id
     val figi: String,
     val date: OffsetDateTime, // OffsetDateTime.toEpochSecond()
     val currency: CurrenciesDB,
     val operationType: OperationTypesDB,
-    val payment: Long,
+    val payment: Long, //все суммы в копейках, центах
     val price: Long,
     val quantity: Int,
     val commission: Long,
-    val commissionCurrency: CurrenciesDB?) {
+    val commissionCurrency: CurrenciesDB?,
+    val profit: Long = 0L
+    ) {
     constructor(p: Int, oper: ru.tinkoff.invest.openapi.model.rest.Operation):
         this(
             id = oper.id,
@@ -280,7 +282,10 @@ data class OperationDB(
             commission = bigDec2LongCent(oper.commission?.value),
             commissionCurrency = if(oper.commission != null)
                 CurrenciesDB.valueOf(oper.commission.currency.value) else
-                    CurrenciesDB.USD) {
+                    CurrenciesDB.USD,
+            profit = 0L
+        )
+        {
             //if(oper.quantity != oper.quantityExecuted) Log.e(TAG, "${oper} Quantity != QuantityExecuted")
         }
 }
@@ -337,21 +342,26 @@ interface TinkoffDao {
     }
 
 // OperationDB
-    @Query("Select * from operation")
-    suspend fun getAllOperation(): List<OperationDB>
+    @Query("Select * from operation where portfolio=:portfolio order by date")
+    suspend fun getAllOperation(portfolio: Int): List<OperationDB>
+
+    @Query("Select * from operation where (portfolio=:portfolio and (operationType in (:oper))) order by date")
+    suspend fun getOperationsByType(portfolio: Int, oper:List<OperationTypesDB>): List<OperationDB>
 
     @Query("Select * from operation where (portfolio=:portfolio and operationType=:oper and figi=:figi) order by date desc")
     suspend fun getOperations(portfolio: Int, figi: String, oper:OperationTypesDB = OperationTypesDB.Buy): List<OperationDB>
 
     @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
-            " and figi=:figi and date >= :from)")
+            " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividends(portfolio: Int, figi: String, from: OffsetDateTime,
+                             to: OffsetDateTime = OffsetDateTime.now(),
                              oper:List<OperationTypesDB> = listOf(OperationTypesDB.Dividend,
                                 OperationTypesDB.Coupon)): SumOf
 
     @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
-            " and figi=:figi and date >= :from)")
+            " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividendsTax(portfolio: Int, figi: String, from: OffsetDateTime,
+                                to: OffsetDateTime = OffsetDateTime.now(),
                                 oper:List<OperationTypesDB> = listOf(OperationTypesDB.TaxDividend,
                                 OperationTypesDB.TaxCoupon)): SumOf
 
@@ -368,14 +378,12 @@ interface TinkoffDao {
     suspend fun deleteAllOperation()
 }
 
-@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 2, exportSchema = false)
+@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TinkoffDB : RoomDatabase() {
     abstract val tinkoffDao: TinkoffDao
 
     companion object {
-        // Singleton prevents multiple instances of database opening at the
-        // same time.
         @Volatile
         private var INSTANCE: TinkoffDB? = null
         var portfolioList: MutableList<PortfolioDB> = mutableListOf()

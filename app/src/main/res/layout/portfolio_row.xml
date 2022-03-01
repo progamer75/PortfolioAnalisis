@@ -37,7 +37,7 @@
                 />
             <TextView
                 style="@style/PortfolioDataText"
-                app:money="@{row.profitWithoutTax}"
+                app:money="@{row.profitWithoutTaxClosed}"
                 app:currency="@{row.currency}"
                 />
         </LinearLayout>
