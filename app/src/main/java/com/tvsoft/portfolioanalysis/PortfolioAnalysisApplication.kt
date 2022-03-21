@@ -1,9 +1,13 @@
 package com.tvsoft.portfolioanalysis
 
 import android.app.Application
+import android.content.Context
 import android.content.res.Configuration
 
 class PortfolioAnalysisApplication: Application() {
+    companion object {
+        var context: Context? = null
+    }
     //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob())) }
 
     // Called when the application is starting, before any other application objects have been created.
@@ -35,6 +39,7 @@ class PortfolioAnalysisApplication: Application() {
     override fun onCreate() {
         super.onCreate()
         mAppExecutors = AppExecutors()
+        context = this
     }
 
 /*    fun getDatabase(): TinkoffDB? {

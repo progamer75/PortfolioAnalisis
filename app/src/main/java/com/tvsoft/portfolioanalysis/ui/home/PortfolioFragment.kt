@@ -95,9 +95,9 @@ class RelatedRVOnScrollListener(private val related: RecyclerView) : RecyclerVie
     }
 }
 
-class PortfolioFragmentAdapter(fragment: Fragment, private val tinkoff_api: TinkoffAPI): FragmentStateAdapter(fragment) {
+class PortfolioFragmentAdapter(fragment: Fragment): FragmentStateAdapter(fragment) {
     override fun getItemCount(): Int {
-        return tinkoff_api.portfolios.size
+        return TinkoffAPI.portfolios.size
     }
 
     override fun createFragment(position: Int): Fragment {

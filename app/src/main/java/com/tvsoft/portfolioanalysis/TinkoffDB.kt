@@ -3,15 +3,16 @@ package com.tvsoft.portfolioanalysis
 import android.content.Context
 import androidx.room.*
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.tvsoft.portfolioanalysis.Utils.Companion.ts2OffsetDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ru.tinkoff.piapi.contract.v1.*
 import java.math.BigDecimal
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
-import java.util.*
 import java.util.concurrent.Executors
 
 private val TAG = "TinkoffDB"
@@ -20,19 +21,33 @@ enum class CurrenciesDB(a: Int) {
     USD(0), RUB(1), EUR(2), GBP(3), HKD(4), CHF(5), JPY(6), CNY(7), TRY(8);
 
     fun get(s: String): CurrenciesDB {
-        when(s) {
-            "USD" -> return USD
-            "RUB" -> return RUB
-            "EUR" -> return EUR
-            "GBP" -> return GBP
-            "HKD" -> return HKD
-            "CHF" -> return CHF
-            "JPY" -> return JPY
-            "CNY" -> return CNY
-            "TRY" -> return TRY
+        return when(s) {
+            "USD" -> USD
+            "RUB" -> RUB
+            "EUR" -> EUR
+            "GBP" -> GBP
+            "HKD" -> HKD
+            "CHF" -> CHF
+            "JPY" -> JPY
+            "CNY" -> CNY
+            "TRY" -> TRY
+            else -> throw IllegalArgumentException("нет валюты: $s")
         }
+    }
 
-        throw IllegalArgumentException("нет валюты: $s")
+    fun getWithNull(s: String): CurrenciesDB? {
+        return when(s) {
+            "USD" -> USD
+            "RUB" -> RUB
+            "EUR" -> EUR
+            "GBP" -> GBP
+            "HKD" -> HKD
+            "CHF" -> CHF
+            "JPY" -> JPY
+            "CNY" -> CNY
+            "TRY" -> TRY
+            else -> null
+        }
     }
 
     fun itName(): String {
@@ -96,7 +111,11 @@ enum class OperationTypesDB(a: Int) {
     PartRepayment(17),
     Repayment(18),
     SecurityIn(19),
-    SecurityOut(20);
+    SecurityOut(20),
+    BuyCurrency(21),
+    SellCurrency(22)
+    ;
+    //BBG0013HGFT4 USD
 
     fun get(s: String): OperationTypesDB {
         when(s) {
@@ -223,19 +242,32 @@ data class MarketInstrumentDB(
     val name: String,
     val ticker: String,
     val lot: Int,
-    val minQuantity: Int,
     val instrumentType: InstrumentsTypeDB
     ) {
-        constructor(instr: ru.tinkoff.invest.openapi.model.rest.MarketInstrument):
+        constructor(instr: Share):
             this(figi = instr.figi,
-                currency = CurrenciesDB.valueOf(instr.currency.value),
+                currency = CurrenciesDB.valueOf(instr.currency),
                 name = instr.name,
                 ticker = instr.ticker,
                 lot = instr.lot ?: 0,
-                minQuantity = instr.minQuantity ?: 0,
-                instrumentType = InstrumentsTypeDB.valueOf(instr.type.value)
-                ) {
-            }
+                instrumentType = InstrumentsTypeDB.Stock
+                )
+        constructor(instr: Bond):
+                this(figi = instr.figi,
+                    currency = CurrenciesDB.valueOf(instr.currency),
+                    name = instr.name,
+                    ticker = instr.ticker,
+                    lot = instr.lot ?: 0,
+                    instrumentType = InstrumentsTypeDB.Bond
+                )
+        constructor(instr: Etf):
+                this(figi = instr.figi,
+                    currency = CurrenciesDB.valueOf(instr.currency),
+                    name = instr.name,
+                    ticker = instr.ticker,
+                    lot = instr.lot ?: 0,
+                    instrumentType = InstrumentsTypeDB.Etf
+                )
     }
 
 /**
@@ -244,6 +276,11 @@ data class MarketInstrumentDB(
 fun bigDec2LongCent(a: java.math.BigDecimal?): Long {
     return a?.multiply(BigDecimal.valueOf(100))?.toLong() ?: 0
 }
+
+fun money2Double(a: MoneyValue): Double {
+    return (a.units).toDouble() + a.nano.toDouble() / 1000000000.0
+}
+
 @Entity(tableName = "operation",
 /*(foreignKeys = [ForeignKey(
     entity = MarketInstrument :: class,
@@ -268,31 +305,51 @@ data class OperationDB(
     val commissionCurrency: CurrenciesDB?,
     val profit: Long = 0L
     ) {
-    constructor(p: Int, oper: ru.tinkoff.invest.openapi.model.rest.Operation):
+    constructor(p: Int, oper: Operation):
         this(
             id = oper.id,
             portfolio = p,
             figi = oper.figi ?: "",
-            date = oper.date,
-            currency = CurrenciesDB.valueOf(oper.currency.value),
-            operationType = OperationTypesDB.valueOf(oper.operationType.value),
-            payment = bigDec2LongCent(oper.payment),
-            price = bigDec2LongCent(oper.price),
-            quantity = oper.quantityExecuted ?: 0,
-            commission = bigDec2LongCent(oper.commission?.value),
+            date = ts2OffsetDateTime(oper.date),
+            currency = if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
+                when(oper.figi) {
+                    "BBG0013HGFT4" -> CurrenciesDB.USD
+                    "BBG0013HJJ31" -> CurrenciesDB.EUR
+                    else -> CurrenciesDB.valueOf(oper.currency)
+                }
+            } else
+                CurrenciesDB.valueOf(oper.currency),
+            operationType = if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
+                when(oper.operationType) {
+                    "Buy" -> OperationTypesDB.BuyCurrency
+                    "Sell" -> OperationTypesDB.SellCurrency
+                    else -> OperationTypesDB.valueOf(oper.operationType.value)
+                }
+            } else
+                OperationTypesDB.valueOf(oper.operationType.value),
+            payment = money2Double(oper.payment),
+            price = money2Double(oper.price),
+            quantity = oper.quantity, // ?: 0,
+/*            commission = bigDec2LongCent(oper.commission?.value),
             commissionCurrency = if(oper.commission != null)
                 CurrenciesDB.valueOf(oper.commission.currency.value) else
-                    CurrenciesDB.USD,
-            profit = 0L
+                    CurrenciesDB.USD,*/
+            profit = oper.instrumentType
         )
         {
-            //if(oper.quantity != oper.quantityExecuted) Log.e(TAG, "${oper} Quantity != QuantityExecuted")
+/*
+            if(oper.instrumentType == InstrumentType.CURRENCY)
+                Log.i(TAG, "${oper.figi} / ${oper.commission} / ${oper.payment} / ${oper.price} / ${oper.quantityExecuted} / ${oper.operationType.value}")
+*/
         }
 }
 
 @Dao
 interface TinkoffDao {
 // ExchangeRatesDB
+    @Query("Select * from exchange_rate")
+    suspend fun getAllRates(): List<ExchangeRateDB>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertRate(rate: ExchangeRateDB)
 
@@ -300,14 +357,7 @@ interface TinkoffDao {
     suspend fun deleteAllRates()
 
     @Query("Select rate from exchange_rate where currency=:currency and date=:date")
-    suspend fun _getRate(currency: CurrenciesDB, date: LocalDate): Double?
-
-    suspend fun getRate(currency: CurrenciesDB, date: LocalDate): Double? {
-        return if(currency == CurrenciesDB.RUB)
-            1.0
-        else
-            _getRate(currency, date)
-    }
+    suspend fun getRate(currency: CurrenciesDB, date: LocalDate): Double?
 
 // PortfolioDB
     @Query("Select * from portfolio")
@@ -355,15 +405,28 @@ interface TinkoffDao {
             " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividends(portfolio: Int, figi: String, from: OffsetDateTime,
                              to: OffsetDateTime = OffsetDateTime.now(),
-                             oper:List<OperationTypesDB> = listOf(OperationTypesDB.Dividend,
-                                OperationTypesDB.Coupon)): SumOf
+                             oper:List<OperationTypesDB> = listOf(
+                                 OperationTypesDB.Dividend,
+                                 OperationTypesDB.Coupon,
+                                 OperationTypesDB.PartRepayment,
+                                 OperationTypesDB.Repayment)): SumOf
 
-    @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+    @Query("Select -sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
             " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividendsTax(portfolio: Int, figi: String, from: OffsetDateTime,
                                 to: OffsetDateTime = OffsetDateTime.now(),
                                 oper:List<OperationTypesDB> = listOf(OperationTypesDB.TaxDividend,
                                 OperationTypesDB.TaxCoupon)): SumOf
+
+    @Query("Select * from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+            " and figi=:figi and date >= :from and date <= :to)")
+    suspend fun getDividendsAndTax(portfolio: Int, figi: String, from: OffsetDateTime,
+                             to: OffsetDateTime = OffsetDateTime.now(),
+                             oper:List<OperationTypesDB> = listOf(
+                                 OperationTypesDB.Dividend, OperationTypesDB.Coupon,
+                                 OperationTypesDB.TaxDividend, OperationTypesDB.TaxCoupon,
+                                 OperationTypesDB.PartRepayment, OperationTypesDB.Repayment
+                             )): List<OperationDB>
 
     @Query("Select * from operation where id=:operId")
     suspend fun findOperationById(operId: String): List<OperationDB>
@@ -378,7 +441,7 @@ interface TinkoffDao {
     suspend fun deleteAllOperation()
 }
 
-@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 1, exportSchema = false)
+@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TinkoffDB : RoomDatabase() {
     abstract val tinkoffDao: TinkoffDao

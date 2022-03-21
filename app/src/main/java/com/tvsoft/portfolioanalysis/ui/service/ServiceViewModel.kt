@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.tinkoff.invest.openapi.model.rest.OperationStatus
+import ru.tinkoff.piapi.contract.v1.OperationState
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -19,7 +20,6 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
 
     private val TAG = "ServiceViewModel"
 
-    private val tinkoffAPI = TinkoffAPI.getInstance()
     private val _text = MutableLiveData<String>().apply {
         value = "This is service Fragment"
     }
@@ -39,8 +39,8 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
     }
 
     fun fillPortfolios() {
-        val api = tinkoffAPI.api
-        for(account in tinkoffAPI.userAccounts) {
+        val api = TinkoffAPI.api
+        for(account in TinkoffAPI.userAccounts) {
 
         }
     }
@@ -52,9 +52,9 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
     }
 
     private suspend fun loadInstruments() {
-        val stocks = tinkoffAPI.getStocks()
-        val bonds = tinkoffAPI.getBonds()
-        val etfs = tinkoffAPI.getEtfs()
+        val stocks = TinkoffAPI.getStocks()
+        val bonds = TinkoffAPI.getBonds()
+        val etfs = TinkoffAPI.getEtfs()
 
         val miList = mutableListOf<MarketInstrumentDB>()
         stocks?.let {
@@ -94,14 +94,14 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
     }
 
     private suspend fun loadAllData() {
-        val api = tinkoffAPI.api
+        val api = TinkoffAPI.api
 
         tinkoffDao.deleteAllPortfolio()
         TinkoffDB.portfolioList.clear() //TODO не красиво все это TinkoffDB и portfolioList
         var id: Int = 0
-        for(account in tinkoffAPI.userAccounts) {
+        for(account in TinkoffAPI.userAccounts) {
             // сначала загружаем портфели
-            val p = PortfolioDB(id, account.brokerAccountId, "")
+            val p = PortfolioDB(id, account.id, "")
             tinkoffDao.insertPortfolio(p)
             TinkoffDB.portfolioList.add(p)
 
@@ -114,12 +114,18 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
                 localDateTime = localDateTime.minusYears(1)
 
 
-                val operations = api.operationsContext.getOperations(timeFrom, timeTo, null, account.brokerAccountId).get().operations
+                val fromInstant = timeFrom.toInstant()
+                val toInstant = timeTo.toInstant()
+                val operations = api.operationsService.getAllOperationsSync(account.id, fromInstant, toInstant)
+                val a = api.operationsService.getAllOperationsSync(account.id, fromInstant, toInstant)
                 if (operations.isEmpty())
                     break
 
                 for(oper in operations) {
-                    if(oper.status != OperationStatus.DONE)
+                    if(Utils.ts2LocalDate(oper.date) < LocalDate.of(2019, 7, 25) &&
+                        Utils.ts2LocalDate(oper.date) > LocalDate.of(2019, 7, 8))
+                        Log.i(TAG, "$oper")
+                    if(oper.state != OperationState.OPERATION_STATE_EXECUTED)
                         continue
                     if(tinkoffDao.findOperationById(oper.id).isNotEmpty()) {// операция уже есть
                         Log.i(TAG, "$oper")
@@ -128,6 +134,7 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
 
                     val operItem = OperationDB(id, oper)
                     tinkoffDao.insertOperation(operItem)
+                    //Log.i(TAG, oper.toString())
                 }
             }
             id++
@@ -148,14 +155,20 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
     }
 
     private suspend fun loadExchangeRates() {
-        val rateApi = ExchangeRateAPI()
+        val rateList = tinkoffDao.getAllRates()
+
+        rateList.forEach {
+            Log.i(TAG, "${it.currency} / ${it.date} / ${it.rate}")
+        }
+
         withContext(Dispatchers.IO) {
             enumValues<CurrenciesDB>().forEach {
                 var date = LocalDate.of(2018, 3, 1)
                 val rateList =
-                    rateApi.getRate( it, date, LocalDate.now())
+                    ExchangeRateAPI.loadRateFromRes( it, date, LocalDate.now())
                 var prevRate = 0.0
                 rateList.forEach {
+//                    Log.i(TAG, "${it.currency} / ${it.date} / ${it.rate}")
                     while(date <= it.date) {
                         if(date == it.date) {
                             prevRate = it.rate

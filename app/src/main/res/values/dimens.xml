@@ -8,5 +8,6 @@
     <dimen name="text_height">22dp</dimen>
     <dimen name="cell_height">44dp</dimen>
     <dimen name="cellTextSize">15dp</dimen>
+    <dimen name="quantityTextSize">13dp</dimen>
     <dimen name="bottom_navigation_height">48dp</dimen>
 </resources>

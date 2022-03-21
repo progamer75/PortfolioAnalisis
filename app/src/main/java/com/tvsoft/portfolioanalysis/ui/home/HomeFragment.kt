@@ -5,10 +5,8 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.ViewModelProvider
 import com.google.android.material.tabs.TabLayoutMediator
-import com.tvsoft.portfolioanalysis.PAViewModel
 import com.tvsoft.portfolioanalysis.TinkoffAPI
 import com.tvsoft.portfolioanalysis.TinkoffDB
 import com.tvsoft.portfolioanalysis.databinding.FragmentHomeBinding
@@ -18,7 +16,6 @@ class HomeFragment : Fragment() {
     //private val viewModel: PAViewModel by activityViewModels<PAViewModel>()
     private lateinit var homeViewModel: HomeViewModel
     private var _binding: FragmentHomeBinding? = null
-    private val tinkoffApi = TinkoffAPI.getInstance()
 
     // This property is only valid between onCreateView and
     // onDestroyView.
@@ -45,12 +42,12 @@ class HomeFragment : Fragment() {
         })*/
 
         //TODO Все что связано с tinkoff_api надо заполнять после ввода тикета
-        val portfolioFragmentAdapter = PortfolioFragmentAdapter(this, tinkoffApi)
+        val portfolioFragmentAdapter = PortfolioFragmentAdapter(this)
         val pager = binding.pager
         pager.adapter = portfolioFragmentAdapter
         val tab_pager = binding.tabPager
         TabLayoutMediator(tab_pager, pager) {tab, pos ->
-            tab.text = tinkoffApi.getPortfolioName(pos)
+            tab.text = TinkoffAPI.getPortfolioName(pos)
         }.attach()
 
         return root

@@ -25,7 +25,9 @@
                 />
             <TextView
                 style="@style/PortfolioDataText"
-            />
+                app:quantity="@{row.quantity}"
+                android:textSize="@dimen/quantityTextSize"
+                />
         </LinearLayout>
 
         <LinearLayout
@@ -69,7 +71,7 @@
 
             <TextView
                 style="@style/PortfolioDataText"
-                app:money="@{row.dividends}"
+                app:money="@{row.dividendsClosed}"
                 app:currency="@{row.currency}"
             />
         </LinearLayout>

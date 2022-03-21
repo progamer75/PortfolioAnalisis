@@ -1,10 +1,7 @@
 package com.tvsoft.portfolioanalysis
 
 import android.os.Bundle
-import android.util.Log
 import android.widget.Toast
-import androidx.activity.viewModels
-import androidx.appcompat.app.ActionBar
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -16,13 +13,13 @@ import com.tvsoft.portfolioanalysis.databinding.ActivityMainBinding
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     val TAG = "Main"
-    private val viewModel: PAViewModel by viewModels<PAViewModel>()
+    //private val viewModel: PAViewModel by viewModels<PAViewModel>()
     //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob()))}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (!viewModel.initTinkoff()) {
+        if(!TinkoffAPI.init()) {
             Toast.makeText(this, "Ошибка связи!", Toast.LENGTH_SHORT).show()
         }
 

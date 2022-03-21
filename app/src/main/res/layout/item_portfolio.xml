@@ -66,7 +66,9 @@
             android:layout_height="wrap_content">
             <TextView
                 android:text="Баланс:"
-                style="@style/PortfolioStatText" />
+                style="@style/PortfolioStatText"
+                android:gravity="left"
+                />
             <TextView
                 style="@style/PortfolioStatText"
                 android:text="@{vm.portfolioBalanceRub}" />
@@ -85,26 +87,30 @@
             android:layout_height="wrap_content">
             <TextView
                 android:text="Профит по открытым:"
-                style="@style/PortfolioStatText" />
+                style="@style/PortfolioStatText"
+                android:gravity="left"
+                />
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioProfitRub}" />
+                android:text="@{vm.portfolioOpenRub}" />
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioProfitIrrRub}" />
+                android:text="@{vm.portfolioOpenIrrRub}" />
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioProfitUsd}"/>
+                android:text="@{vm.portfolioOpenUsd}"/>
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioProfitIrrUsd}"/>
+                android:text="@{vm.portfolioOpenIrrUsd}"/>
         </TableRow>
         <TableRow
             android:layout_width="match_parent"
             android:layout_height="wrap_content">
             <TextView
                 android:text="Профит по закрытым:"
-                style="@style/PortfolioStatText" />
+                style="@style/PortfolioStatText"
+                android:gravity="left"
+                />
             <TextView
                 style="@style/PortfolioStatText"
                 android:text="@{vm.portfolioClosedProfitRub}" />
@@ -123,19 +129,21 @@
             android:layout_height="wrap_content">
             <TextView
                 android:text="Итого профит:"
-                style="@style/PortfolioStatText" />
+                style="@style/PortfolioStatText"
+                android:gravity="left"
+                />
             <TextView
                 style="@style/PortfolioStatText"
                 android:text="@{vm.portfolioTotalProfitRub}" />
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioTotalProfitIrrRub}" />
+                android:text="@{vm.portfolioTotalIrrRub}" />
             <TextView
                 style="@style/PortfolioStatText"
                 android:text="@{vm.portfolioTotalProfitUsd}"/>
             <TextView
                 style="@style/PortfolioStatText"
-                android:text="@{vm.portfolioTotalProfitIrrUsd}"/>
+                android:text="@{vm.portfolioTotalIrrUsd}"/>
         </TableRow>
     </TableLayout>
 
