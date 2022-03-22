@@ -57,17 +57,17 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         val etfs = TinkoffAPI.getEtfs()
 
         val miList = mutableListOf<MarketInstrumentDB>()
-        stocks?.let {
+        stocks.let {
             for(stock in stocks) {
                 miList.add(MarketInstrumentDB(stock))
             }
         }
-        bonds?.let {
+        bonds.let {
             for(bond in bonds) {
                 miList.add(MarketInstrumentDB(bond))
             }
         }
-        etfs?.let {
+        etfs.let {
             for(etf in etfs) {
                 miList.add(MarketInstrumentDB(etf))
             }

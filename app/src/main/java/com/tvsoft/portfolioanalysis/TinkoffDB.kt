@@ -1,12 +1,14 @@
 package com.tvsoft.portfolioanalysis
 
 import android.content.Context
+import android.util.Log
 import androidx.room.*
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tvsoft.portfolioanalysis.Utils.Companion.ts2OffsetDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import ru.tinkoff.invest.openapi.model.rest.InstrumentType
 import ru.tinkoff.piapi.contract.v1.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -188,6 +190,11 @@ class Converters {
     }
 
     @TypeConverter
+    fun instrumentTypeToInt2(cur: InstrumentType?): Int? {
+        return cur?.ordinal
+    }
+
+    @TypeConverter
     fun operationTypeToInt(cur: OperationTypesDB?): Int? {
         return cur?.ordinal
     }
@@ -216,7 +223,7 @@ data class ExchangeRateDB(
 )}
 
 data class SumOf(
-    val sumOf: Long
+    val sumOf: Double
 )
 
 /**
@@ -297,13 +304,14 @@ data class OperationDB(
     val figi: String,
     val date: OffsetDateTime, // OffsetDateTime.toEpochSecond()
     val currency: CurrenciesDB,
-    val operationType: OperationTypesDB,
-    val payment: Long, //все суммы в копейках, центах
-    val price: Long,
-    val quantity: Int,
-    val commission: Long,
+    val operationType: Int,
+    val instrumentType: InstrumentType,
+    val payment: Double,
+    val price: Double,
+    val quantity: Int
+/*    val commission: Long,
     val commissionCurrency: CurrenciesDB?,
-    val profit: Long = 0L
+    val profit: Long = 0L*/
     ) {
     constructor(p: Int, oper: Operation):
         this(
@@ -312,6 +320,7 @@ data class OperationDB(
             figi = oper.figi ?: "",
             date = ts2OffsetDateTime(oper.date),
             currency = if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
+                Log.i(TAG, "$oper")
                 when(oper.figi) {
                     "BBG0013HGFT4" -> CurrenciesDB.USD
                     "BBG0013HJJ31" -> CurrenciesDB.EUR
@@ -319,22 +328,23 @@ data class OperationDB(
                 }
             } else
                 CurrenciesDB.valueOf(oper.currency),
-            operationType = if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
+            operationType = oper.operationType.ordinal,
+/*            if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
                 when(oper.operationType) {
                     "Buy" -> OperationTypesDB.BuyCurrency
                     "Sell" -> OperationTypesDB.SellCurrency
                     else -> OperationTypesDB.valueOf(oper.operationType.value)
                 }
             } else
-                OperationTypesDB.valueOf(oper.operationType.value),
+                OperationTypesDB.valueOf(oper.operationType.value),*/
+            instrumentType = InstrumentType.fromValue(oper.instrumentType),
             payment = money2Double(oper.payment),
             price = money2Double(oper.price),
-            quantity = oper.quantity, // ?: 0,
+            quantity = oper.quantity.toInt() // ?: 0,
 /*            commission = bigDec2LongCent(oper.commission?.value),
             commissionCurrency = if(oper.commission != null)
                 CurrenciesDB.valueOf(oper.commission.currency.value) else
                     CurrenciesDB.USD,*/
-            profit = oper.instrumentType
         )
         {
 /*

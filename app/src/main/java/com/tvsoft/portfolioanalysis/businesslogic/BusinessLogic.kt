@@ -3,6 +3,8 @@ package com.tvsoft.portfolioanalysis.businesslogic
 import android.util.Log
 import com.tvsoft.portfolioanalysis.*
 import org.apache.commons.math3.analysis.UnivariateFunction
+import ru.tinkoff.invest.openapi.model.rest.InstrumentType
+import ru.tinkoff.piapi.contract.v1.OperationType
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import kotlin.math.min
@@ -16,7 +18,7 @@ data class StockBatch ( //партия акций
     val date: OffsetDateTime,
     val currency: CurrenciesDB,
     val securityIn: Boolean, // перевод из другого депозитария
-    var sum: Long, // в копейках
+    var sum: Double,
     var quantity: Int
     )
 
@@ -24,7 +26,7 @@ data class Deal(
     val figi: String,
     val date: OffsetDateTime,
     val rate: Double,
-    val profit: Long, // в копейках
+    val profit: Double,
     val tax: Double
     )
 
@@ -86,35 +88,29 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                 Log.i(TAG,"$curDate - $curBalance")
                 curDate = operDate
             }
-            val payment = oper.payment.toDouble() / 100.0
-            val rate = oper.price.toDouble() / 100.0
             val prevBalance: Double = curBalance[oper.currency]!!
             val usdRate = ExchangeRateAPI.getRate(CurrenciesDB.USD, operDate)
             when(oper.operationType) {
-                OperationTypesDB.PayOut, OperationTypesDB.PayIn -> {
+                OperationType.OPERATION_TYPE_OUTPUT_VALUE, OperationType.OPERATION_TYPE_INPUT_VALUE -> {
                     when(oper.currency) {
                         CurrenciesDB.USD -> {
-                            usdCashList.add(CashFlow(operDate, payment))
-                            rubCashList.add(CashFlow(operDate, payment * usdRate))
+                            usdCashList.add(CashFlow(operDate, oper.payment))
+                            rubCashList.add(CashFlow(operDate, oper.payment * usdRate))
                         }
                         CurrenciesDB.RUB -> {
-                            rubCashList.add(CashFlow(operDate, payment))
-                            usdCashList.add(CashFlow(operDate, payment / usdRate))
+                            rubCashList.add(CashFlow(operDate, oper.payment))
+                            usdCashList.add(CashFlow(operDate, oper.payment / usdRate))
                         }
                         else -> {
                             rubCashList.add(CashFlow(operDate,
-                                Utils.moneyConvert(payment, oper.currency, CurrenciesDB.RUB, operDate)))
+                                Utils.moneyConvert(oper.payment, oper.currency, CurrenciesDB.RUB, operDate)))
                             usdCashList.add(CashFlow(operDate,
-                                Utils.moneyConvert(payment, oper.currency, CurrenciesDB.USD, operDate)))
+                                Utils.moneyConvert(oper.payment, oper.currency, CurrenciesDB.USD, operDate)))
                         }
                     }
-                    curBalance[oper.currency] = prevBalance + payment
+                    curBalance[oper.currency] = prevBalance + oper.payment
                 }
-                OperationTypesDB.BuyCurrency, OperationTypesDB.SellCurrency ->
-                    { // buy: oper.payment = -, sell +    payment в рублях
-                        curBalance[oper.currency] = prevBalance + oper.quantity
-                        curBalance[CurrenciesDB.RUB] = curBalance[CurrenciesDB.RUB]!! + payment
-                    }
+
 /* не учитываем, т.к. сумма по операции = 0
                OperationTypesDB.SecurityIn -> {
                     Log.i(TAG, "In ${oper.currency.name}: ${oper.payment}")
@@ -124,7 +120,12 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                 }
 */
                 else ->
-                    curBalance[oper.currency] = prevBalance + payment
+                    if(oper.instrumentType == InstrumentType.CURRENCY)
+                    { // buy: oper.payment = -, sell +    payment в рублях
+                        curBalance[oper.currency] = prevBalance + oper.quantity
+                        curBalance[CurrenciesDB.RUB] = curBalance[CurrenciesDB.RUB]!! + oper.payment
+                    } else
+                        curBalance[oper.currency] = prevBalance + oper.payment
 /*              OperationTypesDB.Sell ->
                 OperationTypesDB.Buy ->
                 BrokerCommission ->
@@ -190,7 +191,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                 figi = operation.figi,
                 date = operation.date,
                 currency = operation.currency,
-                securityIn = (operation.operationType == OperationTypesDB.SecurityIn),
+                securityIn = (operation.operationType == OperationType.OPERATION_TYPE_INPUT_SECURITIES_VALUE),
                 sum = -operation.payment,
                 quantity = operation.quantity
             ))
@@ -206,7 +207,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
         sellList.forEach { sell ->
             var remainedForClose = sell.quantity
             var quantityForClose = sell.quantity
-            var totalBuySum: Long = 0
+            var totalBuySum: Double = 0.0
             var tax = 0.0
             var rate = 0.0
             var quantitySecurityIn = 0

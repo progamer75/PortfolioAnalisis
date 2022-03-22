@@ -12,6 +12,7 @@ import com.tvsoft.portfolioanalysis.Utils.Companion.percentFormat
 import com.tvsoft.portfolioanalysis.businesslogic.BusinessLogic
 import kotlinx.coroutines.launch
 import ru.tinkoff.invest.openapi.model.rest.InstrumentType
+import ru.tinkoff.piapi.contract.v1.OperationType
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -40,7 +41,7 @@ data class PortfolioRow(
 data class PortfolioStat(
     var balance: Double = 0.0, // текущая стоимость портфеля
     var profitOpen: Double = 0.0, // профит по открытым позициям с дивидендами за вычетом налогов и комиссий
-    var profitOpenIrr: Double = 0.0,
+    var profitOpenIrr: Double = 0.0
 )
 
 class PortfolioFragmentViewModel(private val portfolioNum: Int, application: Application) :
@@ -50,7 +51,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
     val rowList = MutableLiveData<List<PortfolioRow>>()
     var profitMap = mutableMapOf<CurrenciesDB, Double>()
     var period: Periods = Periods.Year
-    private var _lastUSDRate: Double = 1.0
+    private var _lastUSDRate = 1.0
 
     val lastUSDRate = MutableLiveData<String>()
     val portfolioBalanceRub = MutableLiveData<String>()
@@ -113,23 +114,23 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
     private suspend fun refreshActivesList() {
         zeroProfitMap()
 
-        var _portfolioBalanceRub: Double = 0.0
-        var _portfolioBalanceUsd: Double = 0.0 // Баланс на сейчас с учетом кэша
+        var _portfolioBalanceRub = 0.0
+        var _portfolioBalanceUsd = 0.0 // Баланс на сейчас с учетом кэша
 
-        var _portfolioOpenRub: Double = 0.0
-        var _portfolioOpenUsd: Double = 0.0
-        var _portfolioOpenIrrRub: Double = 0.0
-        var _portfolioOpenIrrUsd: Double = 0.0
+        var _portfolioOpenRub = 0.0
+        var _portfolioOpenUsd = 0.0
+        var _portfolioOpenIrrRub = 0.0
+        var _portfolioOpenIrrUsd = 0.0
 
-        var _portfolioClosedProfitRub: Double = 0.0
-        var _portfolioClosedProfitUsd: Double = 0.0
-        var _portfolioClosedProfitIrrRub: Double = 0.0
-        var _portfolioClosedProfitIrrUsd: Double = 0.0
+        var _portfolioClosedProfitRub = 0.0
+        var _portfolioClosedProfitUsd = 0.0
+        var _portfolioClosedProfitIrrRub = 0.0
+        var _portfolioClosedProfitIrrUsd = 0.0
 
-        var _portfolioTotalProfitRub: Double = 0.0
-        var _portfolioTotalProfitUsd: Double = 0.0
-        var _portfolioTotalIrrRub: Double = 0.0
-        var _portfolioTotalIrrUsd: Double = 0.0
+        var _portfolioTotalProfitRub = 0.0
+        var _portfolioTotalProfitUsd = 0.0
+        var _portfolioTotalIrrRub = 0.0
+        var _portfolioTotalIrrUsd = 0.0
 
         // по закрытым сделкам:
         val daysAgo: Long =
@@ -153,8 +154,10 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
         val portfolioPositions = TinkoffAPI.portfolios[portfolioNum].positions
         val list = mutableListOf<PortfolioRow>()
         for(pos in portfolioPositions) {
-            val posQuantity = pos.balance.toInt() //pos.lots * instr.lot
-            if(pos.instrumentType == InstrumentType.CURRENCY) {
+            val posQuantity = pos.quantity.toInt()
+            if(pos.quantity != pos.quantityLots)
+                Log.i(TAG, "${pos.figi} - ${pos.quantity} / ${pos.quantityLots}")
+            if(InstrumentType.fromValue(pos.instrumentType) == InstrumentType.CURRENCY) {
                 continue
             }
 
@@ -166,21 +169,22 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 throw Exception("Нулевой курс ${instr.currency}")
 
             var earliestOffsetDate = OffsetDateTime.now()
-            val row = PortfolioRow(pos.figi, pos.name, instr.currency).apply{
+            val name = tinkoffDao.getMarketInstrument(pos.figi)?.name ?: ""
+            val row = PortfolioRow(pos.figi, name, instr.currency).apply{
                 var buyQuantity: Int = 0
-                var buySumRub: Double = 0.0
+                var buySumRub = 0.0
                 val buys = tinkoffDao.getOperations(portfolioNum, pos.figi)
-                var commission: Long = 0
-                var buySum: Double = 0.0
+                var commission = 0.0
+                var buySum = 0.0
                 for(buy in buys) {
                     val kurs = ExchangeRateAPI.getRate(buy.currency, buy.date.toLocalDate())
-                    commission += buy.commission
+                    commission += //buy.commission
                     buyQuantity += buy.quantity
 
                     earliestOffsetDate = buy.date
 
                     if(buyQuantity > posQuantity) {
-                        val price: Double = buy.payment.toDouble() / buy.quantity
+                        val price: Double = buy.payment / buy.quantity
                         buySumRub += price * posQuantity * kurs
                         buySum += price * posQuantity
                         break
@@ -196,27 +200,27 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 }
                 // TODO добавить доходность
                 quantity = posQuantity
-                buySumRub = -buySumRub / 100.0
-                buySum = -buySum / 100.0
+                buySumRub = -buySumRub
+                buySum = -buySum
                 averageRate = if(instr.currency == CurrenciesDB.RUB)
                     1.0
                 else {
                     if(buySum > 0.000001)
                         Utils.round2(buySumRub / buySum)
                     else {
-                        Log.i(TAG, "$buySumRub / $buySum / ${pos.name}")
+                        Log.i(TAG, "$buySumRub / $buySum / ${name}")
                         1.0
                     }
                 }
 
-                profit = pos.expectedYield.value.toDouble() // + commission
+                profit = pos.expectedYield.toDouble() // + commission
                 profitMap[instr.currency] = profitMap[instr.currency]!! + profit
 
-                val commissionRub: Double = -commission.toDouble() / 100.0
+                val commissionRub: Double = -commission
 
                 earliestDate = earliestOffsetDate.toLocalDate()
-                dividends = (tinkoffDao.getDividends(portfolioNum, pos.figi, earliestOffsetDate).sumOf +
-                        tinkoffDao.getDividendsTax(portfolioNum, pos.figi, earliestOffsetDate).sumOf).toDouble() / 100.0
+                dividends = tinkoffDao.getDividends(portfolioNum, pos.figi, earliestOffsetDate).sumOf +
+                        tinkoffDao.getDividendsTax(portfolioNum, pos.figi, earliestOffsetDate).sumOf
 
                 val price = TinkoffAPI.getPriceByFigi(instr.figi)
                 balance = price * posQuantity
@@ -230,11 +234,11 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                         it.date > firstDateOffset &&
                         it.date < lastDateOffset }
                 val profitClosed = closedList.sumOf { it.profit }
-                val sumDivClosed: Long = tinkoffDao.getDividends(portfolioNum, instr.figi, firstDateOffset, earliestOffsetDate).sumOf -
+                val sumDivClosed = tinkoffDao.getDividends(portfolioNum, instr.figi, firstDateOffset, earliestOffsetDate).sumOf -
                         tinkoffDao.getDividendsTax(portfolioNum, instr.figi, firstDateOffset, earliestOffsetDate).sumOf
-                dividendsClosed = sumDivClosed.toDouble() / 100.0
+                dividendsClosed = sumDivClosed
                 val taxClosed = closedList.sumOf { it.tax / it.rate } // в рублях
-                profitWithoutTaxClosed = Utils.round2((profitClosed + sumDivClosed - taxClosed / lastRate) / 100.0)
+                profitWithoutTaxClosed = Utils.round2(profitClosed + sumDivClosed - taxClosed / lastRate)
 
 /*
                 val bUsd = moneyConvert(balance, instr.currency, lastRate, CurrenciesDB.USD, _lastUSDRate)
@@ -274,12 +278,13 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             val row = PortfolioRow(figi, instr.name, instr.currency).apply {
                 closed = true
 
-                var profitClosed: Long = 0
-                var profitClosedRub: Double = 0.0
-                var profitClosedUsd: Double = 0.0
-                var taxClosed: Double = 0.0
-                var taxClosedRub: Double = 0.0
-                var taxClosedUsd: Double = 0.0
+                var profitClosed = 0.0
+                var profitClosedRub = 0.0
+                var profitClosedUsd = 0.0
+                var taxClosed = 0.0
+                var taxClosedRub = 0.0
+                var taxClosedUsd = 0.0
+
                 val dealList = group.value
                 for(deal in dealList) {
                     profitClosed += deal.profit
@@ -314,8 +319,8 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 for(div in divList) {
                     val rate = ExchangeRateAPI.getRate(div.currency, div.date.toLocalDate())
                     val rateUsd = ExchangeRateAPI.getRate(CurrenciesDB.USD, div.date.toLocalDate())
-                    if(div.operationType == OperationTypesDB.TaxCoupon ||
-                        div.operationType == OperationTypesDB.TaxDividend) {
+                    if(div.operationType == OperationType.OPERATION_TYPE_DIVIDEND_TAX_VALUE ||
+                        div.operationType == OperationType.OPERATION_TYPE_TAX_VALUE) {
                         sumDivClosedRub += div.payment
                         sumDivClosed += div.payment / rate
                         sumDivClosedUsd += div.payment / rateUsd
@@ -325,17 +330,16 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                         sumDivClosedUsd += moneyConvert(div.payment.toDouble(), div.currency, rate, CurrenciesDB.USD, rateUsd)
                     }
                 }
-                dividendsClosed = sumDivClosed / 100.0
+                dividendsClosed = sumDivClosed
 
                 profitWithoutTaxClosed =
-                    Utils.round2((profitClosed + sumDivClosed - taxClosed) / 100.0)
+                    Utils.round2(profitClosed + sumDivClosed - taxClosed)
                 profitClosedRub =
-                    Utils.round2((profitClosedRub + sumDivClosedRub - taxClosedRub) / 100.0)
+                    Utils.round2(profitClosedRub + sumDivClosedRub - taxClosedRub)
                 profitClosedUsd =
-                    Utils.round2((profitClosedUsd + sumDivClosedUsd - taxClosedUsd) / 100.0)
-                taxClosed /= 100.0
+                    Utils.round2(profitClosedUsd + sumDivClosedUsd - taxClosedUsd)
                 //balance = profitClosedRub
-                tax = taxClosedRub / 100.0
+                tax = taxClosedRub
 
                 _portfolioClosedProfitRub += profitClosedRub
                 _portfolioClosedProfitUsd += profitClosedUsd
@@ -344,7 +348,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             list.add(row)
         }
 
-        val curList = TinkoffAPI.api.portfolioContext.getPortfolioCurrencies(TinkoffAPI.userAccounts[portfolioNum].brokerAccountId).get().currencies
+        val curList = TinkoffAPI.api.operationsService.getPortfolioSync(TinkoffAPI.userAccounts[portfolioNum].id)
         for(cur in curList) {
             val sum = cur.balance.toDouble()
             val currency = CurrenciesDB.valueOf(cur.currency.value)
