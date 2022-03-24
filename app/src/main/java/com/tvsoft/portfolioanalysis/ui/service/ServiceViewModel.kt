@@ -7,7 +7,6 @@ import com.tvsoft.portfolioanalysis.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.tinkoff.invest.openapi.model.rest.OperationStatus
 import ru.tinkoff.piapi.contract.v1.OperationState
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -55,6 +54,7 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         val stocks = TinkoffAPI.getStocks()
         val bonds = TinkoffAPI.getBonds()
         val etfs = TinkoffAPI.getEtfs()
+        val currencies = TinkoffAPI.getCurrencies()
 
         val miList = mutableListOf<MarketInstrumentDB>()
         stocks.let {
@@ -70,6 +70,11 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         etfs.let {
             for(etf in etfs) {
                 miList.add(MarketInstrumentDB(etf))
+            }
+        }
+        currencies.let {
+            for(cur in currencies) {
+                miList.add(MarketInstrumentDB(cur))
             }
         }
         tinkoffDao.loadAllMarketInstrument(miList)

@@ -11,7 +11,6 @@ import com.tvsoft.portfolioanalysis.Utils.Companion.moneyFormat
 import com.tvsoft.portfolioanalysis.Utils.Companion.percentFormat
 import com.tvsoft.portfolioanalysis.businesslogic.BusinessLogic
 import kotlinx.coroutines.launch
-import ru.tinkoff.invest.openapi.model.rest.InstrumentType
 import ru.tinkoff.piapi.contract.v1.OperationType
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -157,9 +156,13 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             val posQuantity = pos.quantity.toInt()
             if(pos.quantity != pos.quantityLots)
                 Log.i(TAG, "${pos.figi} - ${pos.quantity} / ${pos.quantityLots}")
-            if(InstrumentType.fromValue(pos.instrumentType) == InstrumentType.CURRENCY) {
+
+            continue // TODO InstrumentTypeDB.fromValue(pos.instrumentType)
+/*
+            if(InstrumentTypeDB.fromValue(pos.instrumentType) == InstrumentTypeDB.Currency) {
                 continue
             }
+*/
 
             val instr = tinkoffDao.getMarketInstrument(pos.figi) ?:
                 throw IllegalArgumentException("Не найден инструмент ${pos.figi}")
@@ -173,12 +176,15 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             val row = PortfolioRow(pos.figi, name, instr.currency).apply{
                 var buyQuantity: Int = 0
                 var buySumRub = 0.0
-                val buys = tinkoffDao.getOperations(portfolioNum, pos.figi)
+                val buys = tinkoffDao.getOperations(portfolioNum, pos.figi,
+                    listOf(OperationType.OPERATION_TYPE_BUY,
+                    OperationType.OPERATION_TYPE_BUY_CARD,
+                    OperationType.OPERATION_TYPE_INPUT_SECURITIES))
                 var commission = 0.0
                 var buySum = 0.0
                 for(buy in buys) {
                     val kurs = ExchangeRateAPI.getRate(buy.currency, buy.date.toLocalDate())
-                    commission += //buy.commission
+                    //commission += buy.commission
                     buyQuantity += buy.quantity
 
                     earliestOffsetDate = buy.date
@@ -319,10 +325,14 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 for(div in divList) {
                     val rate = ExchangeRateAPI.getRate(div.currency, div.date.toLocalDate())
                     val rateUsd = ExchangeRateAPI.getRate(CurrenciesDB.USD, div.date.toLocalDate())
-                    if(div.operationType == OperationType.OPERATION_TYPE_DIVIDEND_TAX_VALUE ||
-                        div.operationType == OperationType.OPERATION_TYPE_TAX_VALUE) {
+/*                    if(div.operationType == OperationType.OPERATION_TYPE_DIVIDEND_TAX ||
+                        div.operationType == OperationType.OPERATION_TYPE_DIVIDEND_TAX_PROGRESSIVE ||
+                        div.operationType == OperationType.OPERATION_TYPE_BOND_TAX ||
+                        div.operationType == OperationType.OPERATION_TYPE_BOND_TAX_PROGRESSIVE
+                            ) { // Здесь налоги в рублях*/
+                    if(div.currency == CurrenciesDB.RUB) {
                         sumDivClosedRub += div.payment
-                        sumDivClosed += div.payment / rate
+                        sumDivClosed += div.payment
                         sumDivClosedUsd += div.payment / rateUsd
                     } else {
                         sumDivClosed += div.payment
@@ -348,10 +358,13 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             list.add(row)
         }
 
-        val curList = TinkoffAPI.api.operationsService.getPortfolioSync(TinkoffAPI.userAccounts[portfolioNum].id)
+        val curList = TinkoffAPI.getPortfolio(portfolioNum).positions
         for(cur in curList) {
-            val sum = cur.balance.toDouble()
-            val currency = CurrenciesDB.valueOf(cur.currency.value)
+            //if(cur.instrumentType != InstrumentTypeDB.Currency) // TODO (cur.instrumentType != InstrumentTypeDB.Currency)
+                continue
+            Log.i(TAG, "${cur.figi} - ${cur.quantity} / ${cur.currentPrice} / ${cur.currentPrice.currency.currencyCode}")
+            val sum = cur.quantity.toDouble()
+            val currency = CurrenciesDB.valueOf(cur.currentPrice.currency.currencyCode) //TODO проверить
             val lastRate: Double = ExchangeRateAPI.getLastRate(currency)
             when(currency) {
                 CurrenciesDB.RUB -> {

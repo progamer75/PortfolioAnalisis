@@ -1,7 +1,6 @@
 package com.tvsoft.portfolioanalysis
 
 import android.util.Log
-import com.tvsoft.portfolioanalisis.TinkoffTokens
 import ru.tinkoff.piapi.contract.v1.*
 import ru.tinkoff.piapi.core.InvestApi
 import ru.tinkoff.piapi.core.models.Portfolio
@@ -9,22 +8,19 @@ import java.math.BigDecimal
 
 object TinkoffAPI {
     private val TAG = "TinkoffAPI"
-    lateinit var api: InvestApi//OpenApi
-    var portfolios: MutableList<Portfolio> = mutableListOf()
-    var userAccounts = listOf<Account>()
+    lateinit var api: InvestApi
+    val portfolios = mutableListOf<Portfolio>()
+    var userAccounts= mutableListOf<Account>()
 
     fun init(): Boolean {
         try {
-            //api = OkHttpOpenApi(TinkoffTokens().token, isSandbox)
-            api = InvestApi.create(TinkoffTokens().token)
+            var api2 = InvestApi.create(TinkoffTokens().token)
         } catch(ex: Exception) {
             Log.e(TAG, "Ошибка подключения к Tinkoff InvestApi. Возможно неверно указан токен или нет связи.")
         }
 
-        //val userAccounts: List<UserAccount> = listOf()
         try {
             userAccounts = api.userService.accountsSync
-        //api.userContext.accounts.get().accounts
         } catch(ex: Exception) {
             return false
         }
@@ -46,6 +42,10 @@ object TinkoffAPI {
         return "ИИС"
     }
 
+    fun getPortfolio(portfolioNum: Int): Portfolio {
+        return api.operationsService.getPortfolioSync(TinkoffAPI.userAccounts[portfolioNum].id)
+    }
+
     fun mapUnitsAndNanos(value: Quotation): BigDecimal {
         return if (value.units == 0L && value.nano == 0) {
             BigDecimal.ZERO
@@ -64,4 +64,5 @@ object TinkoffAPI {
     fun getStocks(): List<Share> = api.instrumentsService.allSharesSync
     fun getBonds(): List<Bond> = api.instrumentsService.allBondsSync
     fun getEtfs(): List<Etf> = api.instrumentsService.allEtfsSync
+    fun getCurrencies(): List<Currency> = api.instrumentsService.allCurrenciesSync
 }

@@ -3,7 +3,6 @@ package com.tvsoft.portfolioanalysis.businesslogic
 import android.util.Log
 import com.tvsoft.portfolioanalysis.*
 import org.apache.commons.math3.analysis.UnivariateFunction
-import ru.tinkoff.invest.openapi.model.rest.InstrumentType
 import ru.tinkoff.piapi.contract.v1.OperationType
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -91,7 +90,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
             val prevBalance: Double = curBalance[oper.currency]!!
             val usdRate = ExchangeRateAPI.getRate(CurrenciesDB.USD, operDate)
             when(oper.operationType) {
-                OperationType.OPERATION_TYPE_OUTPUT_VALUE, OperationType.OPERATION_TYPE_INPUT_VALUE -> {
+                OperationType.OPERATION_TYPE_OUTPUT, OperationType.OPERATION_TYPE_INPUT -> {
                     when(oper.currency) {
                         CurrenciesDB.USD -> {
                             usdCashList.add(CashFlow(operDate, oper.payment))
@@ -120,7 +119,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                 }
 */
                 else ->
-                    if(oper.instrumentType == InstrumentType.CURRENCY)
+                    if(oper.instrumentType == InstrumentTypeDB.Currency)
                     { // buy: oper.payment = -, sell +    payment в рублях
                         curBalance[oper.currency] = prevBalance + oper.quantity
                         curBalance[CurrenciesDB.RUB] = curBalance[CurrenciesDB.RUB]!! + oper.payment
@@ -180,7 +179,8 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
         stockBatchList.clear()
         dealList.clear()
 
-        val buyList = tinkoffDao.getOperationsByType(portfolioNum, listOf(OperationTypesDB.Buy, OperationTypesDB.BuyCard, OperationTypesDB.SecurityIn))
+        val buyList = tinkoffDao.getOperationsByType(portfolioNum, listOf(OperationType.OPERATION_TYPE_BUY,
+            OperationType.OPERATION_TYPE_BUY_CARD, OperationType.OPERATION_TYPE_INPUT_SECURITIES))
         for(operation in buyList) {
 /*
             if(operation.operationType == OperationTypesDB.SecurityIn)
@@ -191,7 +191,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                 figi = operation.figi,
                 date = operation.date,
                 currency = operation.currency,
-                securityIn = (operation.operationType == OperationType.OPERATION_TYPE_INPUT_SECURITIES_VALUE),
+                securityIn = (operation.operationType == OperationType.OPERATION_TYPE_INPUT_SECURITIES),
                 sum = -operation.payment,
                 quantity = operation.quantity
             ))
@@ -203,7 +203,7 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
 
         }
 
-        val sellList = tinkoffDao.getOperationsByType(portfolioNum, listOf(OperationTypesDB.Sell))
+        val sellList = tinkoffDao.getOperationsByType(portfolioNum, listOf(OperationType.OPERATION_TYPE_SELL))
         sellList.forEach { sell ->
             var remainedForClose = sell.quantity
             var quantityForClose = sell.quantity

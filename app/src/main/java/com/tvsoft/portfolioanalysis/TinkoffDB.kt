@@ -8,7 +8,6 @@ import com.tvsoft.portfolioanalysis.Utils.Companion.ts2OffsetDateTime
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import ru.tinkoff.invest.openapi.model.rest.InstrumentType
 import ru.tinkoff.piapi.contract.v1.*
 import java.math.BigDecimal
 import java.time.LocalDate
@@ -83,7 +82,8 @@ enum class CurrenciesDB(a: Int) {
     fun rubSymbol(): String = '\u20BD'.toString()
 }
 
-enum class InstrumentsTypeDB(a: Int) {
+
+enum class InstrumentTypeDB(a: Int) {
     Stock(0), Currency(1), Bond(2), Etf(3);
     val values = mapOf(
         "Stock" to 0,
@@ -92,7 +92,7 @@ enum class InstrumentsTypeDB(a: Int) {
         "Etf" to 3)
 }
 
-enum class OperationTypesDB(a: Int) {
+/*enum class OperationTypesDB(a: Int) {
     Sell(0), // +
     Buy(1), // -
     BuyCard(2), // дублируется PayIn
@@ -146,7 +146,7 @@ enum class OperationTypesDB(a: Int) {
 
         throw IllegalArgumentException("нет операции: $s")
     }
-}
+}*/
 
 class Converters {
     @TypeConverter
@@ -180,28 +180,33 @@ class Converters {
     }
 
     @TypeConverter
-    fun instrumentTypeToInt(cur: InstrumentsTypeDB?): Int? {
+    fun instrumentTypeToInt(cur: InstrumentTypeDB?): Int? {
         return cur?.ordinal
     }
 
     @TypeConverter
-    fun intToInstrumentType(id: Int): InstrumentsTypeDB? {
-        return InstrumentsTypeDB.values()[id]
+    fun intToInstrumentType(id: Int): InstrumentTypeDB? {
+        return InstrumentTypeDB.values()[id]
     }
 
-    @TypeConverter
-    fun instrumentTypeToInt2(cur: InstrumentType?): Int? {
-        return cur?.ordinal
-    }
-
-    @TypeConverter
-    fun operationTypeToInt(cur: OperationTypesDB?): Int? {
-        return cur?.ordinal
+/*    @TypeConverter
+    fun operationTypeToInt(op: OperationTypesDB?): Int? {
+        return op?.ordinal
     }
 
     @TypeConverter
     fun intToOperationType(id: Int): OperationTypesDB? {
         return OperationTypesDB.values()[id]
+    }*/
+
+    @TypeConverter
+    fun operationTypeToInt2(op: OperationType): Int {
+        return op.ordinal
+    }
+
+    @TypeConverter
+    fun intToOperationType2(id: Int): OperationType? {
+        return OperationType.forNumber(id)
     }
 }
 
@@ -249,7 +254,7 @@ data class MarketInstrumentDB(
     val name: String,
     val ticker: String,
     val lot: Int,
-    val instrumentType: InstrumentsTypeDB
+    val instrumentType: InstrumentTypeDB
     ) {
         constructor(instr: Share):
             this(figi = instr.figi,
@@ -257,7 +262,7 @@ data class MarketInstrumentDB(
                 name = instr.name,
                 ticker = instr.ticker,
                 lot = instr.lot ?: 0,
-                instrumentType = InstrumentsTypeDB.Stock
+                instrumentType = InstrumentTypeDB.Stock
                 )
         constructor(instr: Bond):
                 this(figi = instr.figi,
@@ -265,7 +270,7 @@ data class MarketInstrumentDB(
                     name = instr.name,
                     ticker = instr.ticker,
                     lot = instr.lot ?: 0,
-                    instrumentType = InstrumentsTypeDB.Bond
+                    instrumentType = InstrumentTypeDB.Bond
                 )
         constructor(instr: Etf):
                 this(figi = instr.figi,
@@ -273,7 +278,15 @@ data class MarketInstrumentDB(
                     name = instr.name,
                     ticker = instr.ticker,
                     lot = instr.lot ?: 0,
-                    instrumentType = InstrumentsTypeDB.Etf
+                    instrumentType = InstrumentTypeDB.Etf
+                )
+        constructor(instr: Currency):
+                this(figi = instr.figi,
+                    currency = CurrenciesDB.valueOf(instr.currency),
+                    name = instr.name,
+                    ticker = instr.ticker,
+                    lot = instr.lot ?: 0,
+                    instrumentType = InstrumentTypeDB.Currency
                 )
     }
 
@@ -297,15 +310,16 @@ fun money2Double(a: MoneyValue): Double {
         Index(value = ["portfolio"]),
         Index(value = ["figi"]),
         Index(value = ["date"]),
-        Index(value = ["operationType"])])
+        Index(value = ["operationType"]),
+        Index(value = ["instrumentType"])])
 data class OperationDB(
     @PrimaryKey val id: String,
     val portfolio: Int, //portfolioDB.id
     val figi: String,
     val date: OffsetDateTime, // OffsetDateTime.toEpochSecond()
     val currency: CurrenciesDB,
-    val operationType: Int,
-    val instrumentType: InstrumentType,
+    val operationType: OperationType,
+    val instrumentType: InstrumentTypeDB,
     val payment: Double,
     val price: Double,
     val quantity: Int
@@ -319,16 +333,16 @@ data class OperationDB(
             portfolio = p,
             figi = oper.figi ?: "",
             date = ts2OffsetDateTime(oper.date),
-            currency = if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
+            currency = /*if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
                 Log.i(TAG, "$oper")
                 when(oper.figi) {
                     "BBG0013HGFT4" -> CurrenciesDB.USD
                     "BBG0013HJJ31" -> CurrenciesDB.EUR
                     else -> CurrenciesDB.valueOf(oper.currency)
                 }
-            } else
+            } else*/
                 CurrenciesDB.valueOf(oper.currency),
-            operationType = oper.operationType.ordinal,
+            operationType = oper.operationType,
 /*            if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
                 when(oper.operationType) {
                     "Buy" -> OperationTypesDB.BuyCurrency
@@ -337,16 +351,13 @@ data class OperationDB(
                 }
             } else
                 OperationTypesDB.valueOf(oper.operationType.value),*/
-            instrumentType = InstrumentType.fromValue(oper.instrumentType),
+            instrumentType = InstrumentTypeDB.Stock, //fromValue(oper.instrumentType),
             payment = money2Double(oper.payment),
             price = money2Double(oper.price),
             quantity = oper.quantity.toInt() // ?: 0,
-/*            commission = bigDec2LongCent(oper.commission?.value),
-            commissionCurrency = if(oper.commission != null)
-                CurrenciesDB.valueOf(oper.commission.currency.value) else
-                    CurrenciesDB.USD,*/
         )
         {
+            Log.i(TAG, "${oper.instrumentType}")
 /*
             if(oper.instrumentType == InstrumentType.CURRENCY)
                 Log.i(TAG, "${oper.figi} / ${oper.commission} / ${oper.payment} / ${oper.price} / ${oper.quantityExecuted} / ${oper.operationType.value}")
@@ -406,37 +417,71 @@ interface TinkoffDao {
     suspend fun getAllOperation(portfolio: Int): List<OperationDB>
 
     @Query("Select * from operation where (portfolio=:portfolio and (operationType in (:oper))) order by date")
-    suspend fun getOperationsByType(portfolio: Int, oper:List<OperationTypesDB>): List<OperationDB>
+    suspend fun getOperationsByType(portfolio: Int, oper:List<OperationType>): List<OperationDB>
 
-    @Query("Select * from operation where (portfolio=:portfolio and operationType=:oper and figi=:figi) order by date desc")
-    suspend fun getOperations(portfolio: Int, figi: String, oper:OperationTypesDB = OperationTypesDB.Buy): List<OperationDB>
+    @Query("Select * from operation where (portfolio=:portfolio and operationType in (:oper) and figi=:figi) order by date desc")
+    suspend fun getOperations(portfolio: Int, figi: String,
+                              oper:List<OperationType> = listOf(OperationType.OPERATION_TYPE_BUY)): List<OperationDB>
 
     @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
             " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividends(portfolio: Int, figi: String, from: OffsetDateTime,
                              to: OffsetDateTime = OffsetDateTime.now(),
-                             oper:List<OperationTypesDB> = listOf(
-                                 OperationTypesDB.Dividend,
-                                 OperationTypesDB.Coupon,
-                                 OperationTypesDB.PartRepayment,
-                                 OperationTypesDB.Repayment)): SumOf
+                             oper:List<OperationType> = listOf(
+                                 OperationType.OPERATION_TYPE_DIVIDEND,
+                                 OperationType.OPERATION_TYPE_COUPON,
+                                 OperationType.OPERATION_TYPE_BOND_REPAYMENT,
+                                 OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL)): SumOf
 
     @Query("Select -sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
             " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividendsTax(portfolio: Int, figi: String, from: OffsetDateTime,
                                 to: OffsetDateTime = OffsetDateTime.now(),
-                                oper:List<OperationTypesDB> = listOf(OperationTypesDB.TaxDividend,
-                                OperationTypesDB.TaxCoupon)): SumOf
+                                oper:List<OperationType> = listOf(
+                                    OperationType.OPERATION_TYPE_BOND_TAX,
+                                    OperationType.OPERATION_TYPE_BOND_TAX_PROGRESSIVE,
+                                    OperationType.OPERATION_TYPE_DIVIDEND_TAX,
+                                    OperationType.OPERATION_TYPE_DIVIDEND_TAX_PROGRESSIVE
+                                )): SumOf
 
     @Query("Select * from operation where (portfolio=:portfolio and (operationType in (:oper))" +
             " and figi=:figi and date >= :from and date <= :to)")
     suspend fun getDividendsAndTax(portfolio: Int, figi: String, from: OffsetDateTime,
                              to: OffsetDateTime = OffsetDateTime.now(),
-                             oper:List<OperationTypesDB> = listOf(
-                                 OperationTypesDB.Dividend, OperationTypesDB.Coupon,
-                                 OperationTypesDB.TaxDividend, OperationTypesDB.TaxCoupon,
-                                 OperationTypesDB.PartRepayment, OperationTypesDB.Repayment
+                             oper:List<OperationType> = listOf(
+                                 OperationType.OPERATION_TYPE_DIVIDEND,
+                                 OperationType.OPERATION_TYPE_COUPON,
+                                 OperationType.OPERATION_TYPE_BOND_REPAYMENT,
+                                 OperationType.OPERATION_TYPE_BOND_REPAYMENT_FULL,
+                                 OperationType.OPERATION_TYPE_BOND_TAX,
+                                 OperationType.OPERATION_TYPE_BOND_TAX_PROGRESSIVE,
+                                 OperationType.OPERATION_TYPE_DIVIDEND_TAX,
+                                 OperationType.OPERATION_TYPE_DIVIDEND_TAX_PROGRESSIVE
                              )): List<OperationDB>
+
+    @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+            " and figi=:figi and date >= :from and date <= :to)")
+    suspend fun getComission(portfolio: Int, figi: String, from: OffsetDateTime,
+                             to: OffsetDateTime = OffsetDateTime.now(),
+                             oper:List<OperationType> = listOf(
+                                 OperationType.OPERATION_TYPE_BROKER_FEE,
+                                 OperationType.OPERATION_TYPE_MARGIN_FEE,
+                                 OperationType.OPERATION_TYPE_SERVICE_FEE,
+                                 OperationType.OPERATION_TYPE_SUCCESS_FEE
+                                 )): SumOf
+
+    @Query("Select sum(payment) as sumOf from operation where (portfolio=:portfolio and (operationType in (:oper))" +
+            " and date >= :from and date <= :to)")
+    suspend fun getTotalTax(portfolio: Int, from: OffsetDateTime, // Без налогов с дивидендов
+                             to: OffsetDateTime = OffsetDateTime.now(),
+                             oper:List<OperationType> = listOf(
+                                 OperationType.OPERATION_TYPE_BENEFIT_TAX,
+                                 OperationType.OPERATION_TYPE_BENEFIT_TAX_PROGRESSIVE,
+                                 OperationType.OPERATION_TYPE_TAX_CORRECTION,
+                                 OperationType.OPERATION_TYPE_TAX_CORRECTION_PROGRESSIVE,
+                                 OperationType.OPERATION_TYPE_TAX,
+                                 OperationType.OPERATION_TYPE_TAX_PROGRESSIVE
+                             )): SumOf
 
     @Query("Select * from operation where id=:operId")
     suspend fun findOperationById(operId: String): List<OperationDB>
@@ -451,7 +496,7 @@ interface TinkoffDao {
     suspend fun deleteAllOperation()
 }
 
-@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 2, exportSchema = false)
+@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 3, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TinkoffDB : RoomDatabase() {
     abstract val tinkoffDao: TinkoffDao
