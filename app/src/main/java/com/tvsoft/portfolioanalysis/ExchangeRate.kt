@@ -13,7 +13,6 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import javax.xml.parsers.DocumentBuilderFactory
 
-
 private const val TAG = "ExchangeRate"
 
 data class ExchangeRate (
@@ -30,7 +29,8 @@ private val currencyMap = mapOf(
     CurrenciesDB.GBP to "R01035",
     CurrenciesDB.HKD to "R01200",
     CurrenciesDB.JPY to "R01820",
-    CurrenciesDB.TRY to "R01700J"
+    CurrenciesDB.TRY to "R01700J",
+    CurrenciesDB.SEK to "R01770"
 )
 
 object ExchangeRateAPI {
@@ -135,6 +135,8 @@ object ExchangeRateAPI {
     }
 
     suspend fun getLastRate(currency: CurrenciesDB): Double {
+        return getRate(currency, LocalDate.now())
+
         var result: Double = 1.0
         if(currency == CurrenciesDB.RUB)
             return result
@@ -192,19 +194,14 @@ object ExchangeRateAPI {
         else
             tinkoffDao.getRate(currency, date) ?: loadRate(currency, date)
 
-/*
-        if(rate < 0.1)
-            Log.i("TAG", "$date / $currency / $rate")
-*/
-
         return rate
     }
 
     private suspend fun loadRate(currency: CurrenciesDB, date: LocalDate): Double {
-        var rate = 1.0
         if(currency == CurrenciesDB.RUB)
             return 1.0
 
+        var rate = 1.0
         val formatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
         val urlString = "http://www.cbr.ru/scripts/XML_daily.asp?" +
                 "date_req=" + date.format(formatter)
@@ -243,7 +240,7 @@ object ExchangeRateAPI {
                     if (name == currency.itName())
                         rate = curRate
                     val cur: CurrenciesDB? = currency.getWithNull(name)
-                    if (cur != null) {
+                    if (cur != null && curRate > 0.0001) {
                         tinkoffDao.insertRate(ExchangeRateDB(cur, date, curRate))
                         Log.i(TAG, "$cur / $date / $curRate")
                     }

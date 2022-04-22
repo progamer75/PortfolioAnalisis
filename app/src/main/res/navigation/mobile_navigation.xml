@@ -21,5 +21,22 @@
         android:id="@+id/navigation_service"
         android:name="com.tvsoft.portfolioanalysis.ui.service.ServiceFragment"
         android:label="Сервис"
-        tools:layout="@layout/fragment_service" />
+        tools:layout="@layout/fragment_service" >
+        <action
+            android:id="@+id/action_navigation_service_to_settings_fragment"
+            app:destination="@id/settings_fragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/settings_fragment"
+        android:name="com.tvsoft.portfolioanalysis.settings.SettingsFragment"
+        android:label="Настройки"
+        tools:layout="@xml/root_preferences" >
+        <action
+            android:id="@+id/action_settings_fragment_to_navigation_home"
+            app:destination="@id/navigation_home"
+            app:popUpTo="@id/navigation_home"
+            app:popUpToInclusive="true" />
+    </fragment>
+
 </navigation>

@@ -2,7 +2,9 @@ package com.tvsoft.portfolioanalysis.ui.service
 
 import android.app.Application
 import android.util.Log
+import android.view.View
 import androidx.lifecycle.*
+import androidx.navigation.findNavController
 import com.tvsoft.portfolioanalysis.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -59,32 +61,41 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
         val miList = mutableListOf<MarketInstrumentDB>()
         stocks.let {
             for(stock in stocks) {
-                miList.add(MarketInstrumentDB(stock))
+                if(getCurrenciesDB(stock.currency) != null)
+                    miList.add(MarketInstrumentDB(stock))
+                else
+                    Log.i(TAG, "$stock")
             }
         }
         bonds.let {
             for(bond in bonds) {
-                miList.add(MarketInstrumentDB(bond))
+                if(getCurrenciesDB(bond.currency) != null)
+                    miList.add(MarketInstrumentDB(bond))
+                else
+                    Log.i(TAG, "$bond")
             }
         }
         etfs.let {
             for(etf in etfs) {
-                miList.add(MarketInstrumentDB(etf))
+                if(getCurrenciesDB(etf.currency) != null)
+                    miList.add(MarketInstrumentDB(etf))
+                else
+                    Log.i(TAG, "$etf")
             }
         }
         currencies.let {
             for(cur in currencies) {
-                miList.add(MarketInstrumentDB(cur))
+                if(getCurrenciesDB(cur.currency) != null)
+                    miList.add(MarketInstrumentDB(cur))
+                else
+                    Log.i(TAG, "$cur")
             }
         }
         tinkoffDao.loadAllMarketInstrument(miList)
     }
 
-    fun showText() {
-        viewModelScope.launch {
-            val allData = tinkoffDao.getAllMarketInstrument()
-            _text.value = allData.size.toString()
-        }
+    fun onSettings(view: View) {
+        val navController = view.findNavController().navigate(R.id.action_navigation_service_to_settings_fragment)
     }
 
     fun onLoadAllData() { // TODO Добавить прогрессбар для отображения прогресса загрузки начальных данных
@@ -115,7 +126,6 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
             while (true) {
                 val timeFrom = OffsetDateTime.of(localDateTime.minusYears(1), ZoneOffset.UTC)
                 val timeTo = OffsetDateTime.of(localDateTime, ZoneOffset.UTC)
-                Log.i(TAG, "$timeFrom / $timeTo")
                 localDateTime = localDateTime.minusYears(1)
 
 
@@ -127,19 +137,14 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
                     break
 
                 for(oper in operations) {
-                    if(Utils.ts2LocalDate(oper.date) < LocalDate.of(2019, 7, 25) &&
-                        Utils.ts2LocalDate(oper.date) > LocalDate.of(2019, 7, 8))
-                        Log.i(TAG, "$oper")
                     if(oper.state != OperationState.OPERATION_STATE_EXECUTED)
                         continue
                     if(tinkoffDao.findOperationById(oper.id).isNotEmpty()) {// операция уже есть
-                        Log.i(TAG, "$oper")
                         continue
                     }
 
                     val operItem = OperationDB(id, oper)
                     tinkoffDao.insertOperation(operItem)
-                    //Log.i(TAG, oper.toString())
                 }
             }
             id++
@@ -160,27 +165,19 @@ class ServiceViewModel(private val tinkoffDao: TinkoffDao,
     }
 
     private suspend fun loadExchangeRates() {
-        val rateList = tinkoffDao.getAllRates()
-
-        rateList.forEach {
-            Log.i(TAG, "${it.currency} / ${it.date} / ${it.rate}")
-        }
-
         withContext(Dispatchers.IO) {
+            tinkoffDao.deleteAllRates()
             enumValues<CurrenciesDB>().forEach {
                 var date = LocalDate.of(2018, 3, 1)
                 val rateList =
                     ExchangeRateAPI.loadRateFromRes( it, date, LocalDate.now())
                 var prevRate = 0.0
                 rateList.forEach {
-//                    Log.i(TAG, "${it.currency} / ${it.date} / ${it.rate}")
                     while(date <= it.date) {
                         if(date == it.date) {
                             prevRate = it.rate
                         }
                         tinkoffDao.insertRate(ExchangeRateDB(it.currency, date, prevRate))
-                        //Log.i(TAG, "${it.currency} / $date / ${prevRate} / ${it.date}")
-
                         date = date.plusDays(1)
                     }
                 }

@@ -38,9 +38,6 @@ class ServiceFragment : Fragment() {
 
         binding.vm = serviceViewModel
         binding.lifecycleOwner = this
-
-        //textView.text = "Всего ${stocks_size} акций / ${bonds_size} бондов / ${etfs_size} ETF / ${viewModel.sss}"
-
         serviceViewModel.loadAllDataDone.observe(viewLifecycleOwner, Observer { status ->
             status?.let {
                 if(status) {

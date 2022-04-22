@@ -1,7 +1,6 @@
 package com.tvsoft.portfolioanalysis
 
 import android.content.Context
-import android.util.Log
 import androidx.room.*
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.tvsoft.portfolioanalysis.Utils.Companion.ts2OffsetDateTime
@@ -19,25 +18,10 @@ import java.util.concurrent.Executors
 private val TAG = "TinkoffDB"
 
 enum class CurrenciesDB(a: Int) {
-    USD(0), RUB(1), EUR(2), GBP(3), HKD(4), CHF(5), JPY(6), CNY(7), TRY(8);
-
-    fun get(s: String): CurrenciesDB {
-        return when(s) {
-            "USD" -> USD
-            "RUB" -> RUB
-            "EUR" -> EUR
-            "GBP" -> GBP
-            "HKD" -> HKD
-            "CHF" -> CHF
-            "JPY" -> JPY
-            "CNY" -> CNY
-            "TRY" -> TRY
-            else -> throw IllegalArgumentException("нет валюты: $s")
-        }
-    }
+    USD(0), RUB(1), EUR(2), GBP(3), HKD(4), CHF(5), JPY(6), CNY(7), TRY(8), SEK(9);
 
     fun getWithNull(s: String): CurrenciesDB? {
-        return when(s) {
+        return when(s.uppercase()) {
             "USD" -> USD
             "RUB" -> RUB
             "EUR" -> EUR
@@ -47,6 +31,7 @@ enum class CurrenciesDB(a: Int) {
             "JPY" -> JPY
             "CNY" -> CNY
             "TRY" -> TRY
+            "SEK" -> SEK
             else -> null
         }
     }
@@ -62,6 +47,7 @@ enum class CurrenciesDB(a: Int) {
             JPY -> "JPY"
             CNY -> "CNY"
             TRY -> "TRY"
+            SEK -> "SEK"
         }
     }
 
@@ -76,20 +62,60 @@ enum class CurrenciesDB(a: Int) {
             JPY -> '\u00A5'.toString()
             CNY -> '\u04B0'.toString()
             TRY -> '\u20BA'.toString()
+            SEK -> "kr"
         }
     }
 
     fun rubSymbol(): String = '\u20BD'.toString()
 }
 
+fun getCurrenciesDB(s: String): CurrenciesDB? {
+    return when(s.uppercase()) {
+        "USD" -> CurrenciesDB.USD
+        "RUB" -> CurrenciesDB.RUB
+        "EUR" -> CurrenciesDB.EUR
+        "GBP" -> CurrenciesDB.GBP
+        "HKD" -> CurrenciesDB.HKD
+        "CHF" -> CurrenciesDB.CHF
+        "JPY" -> CurrenciesDB.JPY
+        "CNY" -> CurrenciesDB.CNY
+        "TRY" -> CurrenciesDB.TRY
+        "SEK" -> CurrenciesDB.SEK
+        else -> null
+    }
+}
+
+fun getCurrenciesDByFigi(figi: String): CurrenciesDB? {
+    return when(figi) {
+        "BBG0013HGFT4" -> CurrenciesDB.USD
+        "BBG0013HJJ31" -> CurrenciesDB.EUR
+        "BBG0013J12N1" -> CurrenciesDB.TRY
+        "BBG0013HSW87" -> CurrenciesDB.HKD
+        "BBG0013HRTL0" -> CurrenciesDB.CNY
+        "BBG0013HQ524" -> CurrenciesDB.JPY
+        "BBG0013HQ5K4" -> CurrenciesDB.CHF
+        "BBG0013HQ5F0" -> CurrenciesDB.GBP
+        else -> null
+    }
+}
 
 enum class InstrumentTypeDB(a: Int) {
-    Stock(0), Currency(1), Bond(2), Etf(3);
+    Stock(0), Currency(1), Bond(2), Etf(3), Null(4);
     val values = mapOf(
-        "Stock" to 0,
-        "Currency" to 1,
-        "Bond" to 2,
-        "Etf" to 3)
+        "stock" to 0,
+        "currency" to 1,
+        "bond" to 2,
+        "etf" to 3)
+}
+
+fun getInstrumentTypeDB(str: String): InstrumentTypeDB {
+    return when(str.lowercase()) {
+        "share" -> InstrumentTypeDB.Stock
+        "currency" -> InstrumentTypeDB.Currency
+        "bond" -> InstrumentTypeDB.Bond
+        "etf" -> InstrumentTypeDB.Etf
+        else -> InstrumentTypeDB.Null
+    }
 }
 
 /*enum class OperationTypesDB(a: Int) {
@@ -253,38 +279,43 @@ data class MarketInstrumentDB(
     val currency: CurrenciesDB,
     val name: String,
     val ticker: String,
+    val isin: String,
     val lot: Int,
     val instrumentType: InstrumentTypeDB
     ) {
         constructor(instr: Share):
             this(figi = instr.figi,
-                currency = CurrenciesDB.valueOf(instr.currency),
+                currency = getCurrenciesDB(instr.currency)!!,
                 name = instr.name,
                 ticker = instr.ticker,
+                isin = instr.isin,
                 lot = instr.lot ?: 0,
                 instrumentType = InstrumentTypeDB.Stock
                 )
         constructor(instr: Bond):
                 this(figi = instr.figi,
-                    currency = CurrenciesDB.valueOf(instr.currency),
+                    currency = getCurrenciesDB(instr.currency)!!,
                     name = instr.name,
                     ticker = instr.ticker,
+                    isin = instr.isin,
                     lot = instr.lot ?: 0,
                     instrumentType = InstrumentTypeDB.Bond
                 )
         constructor(instr: Etf):
                 this(figi = instr.figi,
-                    currency = CurrenciesDB.valueOf(instr.currency),
+                    currency = getCurrenciesDB(instr.currency)!!,
                     name = instr.name,
                     ticker = instr.ticker,
+                    isin = instr.isin,
                     lot = instr.lot ?: 0,
                     instrumentType = InstrumentTypeDB.Etf
                 )
         constructor(instr: Currency):
                 this(figi = instr.figi,
-                    currency = CurrenciesDB.valueOf(instr.currency),
+                    currency = getCurrenciesDB(instr.currency)!!,
                     name = instr.name,
                     ticker = instr.ticker,
+                    isin = instr.isin,
                     lot = instr.lot ?: 0,
                     instrumentType = InstrumentTypeDB.Currency
                 )
@@ -333,36 +364,14 @@ data class OperationDB(
             portfolio = p,
             figi = oper.figi ?: "",
             date = ts2OffsetDateTime(oper.date),
-            currency = /*if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
-                Log.i(TAG, "$oper")
-                when(oper.figi) {
-                    "BBG0013HGFT4" -> CurrenciesDB.USD
-                    "BBG0013HJJ31" -> CurrenciesDB.EUR
-                    else -> CurrenciesDB.valueOf(oper.currency)
-                }
-            } else*/
-                CurrenciesDB.valueOf(oper.currency),
+            currency =
+                getCurrenciesDB(oper.currency)!!,
             operationType = oper.operationType,
-/*            if(oper.figi == "BBG0013HGFT4" || (oper.figi == "BBG0013HJJ31")) {
-                when(oper.operationType) {
-                    "Buy" -> OperationTypesDB.BuyCurrency
-                    "Sell" -> OperationTypesDB.SellCurrency
-                    else -> OperationTypesDB.valueOf(oper.operationType.value)
-                }
-            } else
-                OperationTypesDB.valueOf(oper.operationType.value),*/
-            instrumentType = InstrumentTypeDB.Stock, //fromValue(oper.instrumentType),
+            instrumentType = getInstrumentTypeDB(oper.instrumentType),
             payment = money2Double(oper.payment),
             price = money2Double(oper.price),
             quantity = oper.quantity.toInt() // ?: 0,
         )
-        {
-            Log.i(TAG, "${oper.instrumentType}")
-/*
-            if(oper.instrumentType == InstrumentType.CURRENCY)
-                Log.i(TAG, "${oper.figi} / ${oper.commission} / ${oper.payment} / ${oper.price} / ${oper.quantityExecuted} / ${oper.operationType.value}")
-*/
-        }
 }
 
 @Dao
@@ -416,8 +425,11 @@ interface TinkoffDao {
     @Query("Select * from operation where portfolio=:portfolio order by date")
     suspend fun getAllOperation(portfolio: Int): List<OperationDB>
 
-    @Query("Select * from operation where (portfolio=:portfolio and (operationType in (:oper))) order by date")
-    suspend fun getOperationsByType(portfolio: Int, oper:List<OperationType>): List<OperationDB>
+    @Query("Select * from operation where (portfolio=:portfolio and" +
+            " (operationType in (:oper))) and" +
+            "(instrumentType != :instr) order by date")
+    suspend fun getOperationsByType(portfolio: Int, oper:List<OperationType>,
+                                    instr:InstrumentTypeDB = InstrumentTypeDB.Null): List<OperationDB>
 
     @Query("Select * from operation where (portfolio=:portfolio and operationType in (:oper) and figi=:figi) order by date desc")
     suspend fun getOperations(portfolio: Int, figi: String,
@@ -496,7 +508,7 @@ interface TinkoffDao {
     suspend fun deleteAllOperation()
 }
 
-@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 3, exportSchema = false)
+@Database(entities = [ExchangeRateDB::class, PortfolioDB::class, MarketInstrumentDB::class, OperationDB::class], version = 2, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class TinkoffDB : RoomDatabase() {
     abstract val tinkoffDao: TinkoffDao

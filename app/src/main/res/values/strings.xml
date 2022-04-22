@@ -4,10 +4,7 @@
     <string name="title_dashboard">Что купить</string>
     <string name="title_service">Настройки</string>
     <string name="title_load_instruments">Загрузить инструменты</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="name">Наименование</string>
-
     <string-array name="period">
         <item>365 дней</item>
         <item>30 дней</item>

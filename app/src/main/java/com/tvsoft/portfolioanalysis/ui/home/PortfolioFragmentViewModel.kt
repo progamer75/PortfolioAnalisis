@@ -153,17 +153,11 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
         val portfolioPositions = TinkoffAPI.portfolios[portfolioNum].positions
         val list = mutableListOf<PortfolioRow>()
         for(pos in portfolioPositions) {
-            val posQuantity = pos.quantity.toInt()
-            if(pos.quantity != pos.quantityLots)
-                Log.i(TAG, "${pos.figi} - ${pos.quantity} / ${pos.quantityLots}")
-
-            continue // TODO InstrumentTypeDB.fromValue(pos.instrumentType)
-/*
-            if(InstrumentTypeDB.fromValue(pos.instrumentType) == InstrumentTypeDB.Currency) {
+            if(getInstrumentTypeDB(pos.instrumentType) == InstrumentTypeDB.Currency) {
                 continue
             }
-*/
 
+            val posQuantity = pos.quantity.toInt()
             val instr = tinkoffDao.getMarketInstrument(pos.figi) ?:
                 throw IllegalArgumentException("Не найден инструмент ${pos.figi}")
 
@@ -197,14 +191,9 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                     }
                     buySumRub += buy.payment * kurs
                     buySum += buy.payment
-/*
-                    if(buy.payment < 10)
-                        Log.i(TAG, "${buy.payment} / ${buy.date} / ${buy.figi}")
-*/
                     if(buyQuantity == posQuantity)
                         break
                 }
-                // TODO добавить доходность
                 quantity = posQuantity
                 buySumRub = -buySumRub
                 buySum = -buySum
@@ -214,7 +203,6 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                     if(buySum > 0.000001)
                         Utils.round2(buySumRub / buySum)
                     else {
-                        Log.i(TAG, "$buySumRub / $buySum / ${name}")
                         1.0
                     }
                 }
@@ -230,9 +218,11 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
 
                 val price = TinkoffAPI.getPriceByFigi(instr.figi)
                 balance = price * posQuantity
-                val sellSumRub = balance * lastRate
+                val balanceRub = balance * lastRate
+                if(balanceRub < 0.01)
+                    Log.i(TAG, "$name: $price / $figi")
 
-                tax = Utils.round2(if(sellSumRub > buySumRub) (sellSumRub - buySumRub) * 0.13 else 0.0) // в рублях
+                tax = Utils.round2(if(balanceRub > buySumRub) (balanceRub - buySumRub) * 0.13 else 0.0) // в рублях
                 profitWithoutTax =
                     Utils.round2(profit + dividends - (commissionRub + tax) / lastRate)  //pos.averagePositionPrice?.value?.toDouble() ?: 0.0
 
@@ -246,12 +236,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 val taxClosed = closedList.sumOf { it.tax / it.rate } // в рублях
                 profitWithoutTaxClosed = Utils.round2(profitClosed + sumDivClosed - taxClosed / lastRate)
 
-/*
-                val bUsd = moneyConvert(balance, instr.currency, lastRate, CurrenciesDB.USD, _lastUSDRate)
-                Log.i(TAG, "$sellSumRub / $bUsd")
-*/
-
-                _portfolioBalanceRub += sellSumRub
+                _portfolioBalanceRub += balanceRub
                 _portfolioBalanceUsd += moneyConvert(balance, instr.currency, lastRate, CurrenciesDB.USD, _lastUSDRate)
 
                 _portfolioOpenRub += profit * lastRate
@@ -263,6 +248,7 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
 
             list.add(row)
         }
+        list.sortBy { it.name }
 
         calcData.calcDeals()
 
@@ -358,15 +344,13 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
             list.add(row)
         }
 
-        val curList = TinkoffAPI.getPortfolio(portfolioNum).positions
-        for(cur in curList) {
-            //if(cur.instrumentType != InstrumentTypeDB.Currency) // TODO (cur.instrumentType != InstrumentTypeDB.Currency)
-                continue
-            Log.i(TAG, "${cur.figi} - ${cur.quantity} / ${cur.currentPrice} / ${cur.currentPrice.currency.currencyCode}")
-            val sum = cur.quantity.toDouble()
-            val currency = CurrenciesDB.valueOf(cur.currentPrice.currency.currencyCode) //TODO проверить
+        val moneyPos = TinkoffAPI.getMoneyPositions(portfolioNum)
+        for(pos in moneyPos) {
+            val sum = pos.value
+            val currency = pos.key
+
             val lastRate: Double = ExchangeRateAPI.getLastRate(currency)
-            when(currency) {
+            when (currency) {
                 CurrenciesDB.RUB -> {
                     _portfolioBalanceRub += sum
                     _portfolioBalanceUsd += sum / _lastUSDRate
@@ -381,10 +365,9 @@ class PortfolioFragmentViewModel(private val portfolioNum: Int, application: App
                 }
             }
 
-            val row = PortfolioRow("", currency.itName(), currency).apply{
+            val row = PortfolioRow("", currency.itName(), currency).apply {
                 balance = sum
             }
-
             list.add(row)
         }
 

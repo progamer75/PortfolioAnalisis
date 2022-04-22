@@ -2,6 +2,7 @@ package com.tvsoft.portfolioanalysis.businesslogic
 
 import android.util.Log
 import com.tvsoft.portfolioanalysis.*
+import org.apache.commons.math3.analysis.DifferentiableUnivariateFunction
 import org.apache.commons.math3.analysis.UnivariateFunction
 import ru.tinkoff.piapi.contract.v1.OperationType
 import java.time.LocalDate
@@ -40,18 +41,58 @@ data class PortfolioBalance(
     val balance: MutableMap<CurrenciesDB, Double>
 )
 
-class IrrFun(private val firstDate: LocalDate,
-             private val list: MutableList<CashFlow>): UnivariateFunction {
+/*class IrrFun(private val firstDate: LocalDate,
+             private val list: MutableList<CashFlow>): UnivariateDifferentiableFunction {
+
+    override fun value(t: DerivativeStructure): DerivativeStructure {
+        var res = 0.0
+        for (cashFlow in list) {
+            val d: Double = (cashFlow.date.toEpochDay() - firstDate.toEpochDay()).toDouble()
+            val x = d * cashFlow.cash * t.value.pow(-d / 365.0) / (365 * t.value)
+            res += x
+            //Log.i(TAG, "${cashFlow.date} - $rate / $d / $x /$res")
+        }
+
+        return DerivativeStructure(1, 1, -res)
+    }
+
     override fun value(rate: Double): Double {
         var res = 0.0
-        val r = 1 + rate
         for(cashFlow in list) {
             val d = cashFlow.date.toEpochDay() - firstDate.toEpochDay()
-            val x = cashFlow.cash / r.pow(d.toDouble() / 365.0)
+            val x = cashFlow.cash / rate.pow(d.toDouble() / 365.0)
             res += x
             //Log.i(TAG, "${cashFlow.date} - $rate / $d / $x /$res")
         }
         return res
+    }
+}*/
+
+class IrrFun(private val firstDate: LocalDate,
+             private val list: MutableList<CashFlow>): DifferentiableUnivariateFunction {
+
+    override fun value(rate: Double): Double {
+        var res = 0.0
+        for(cashFlow in list) {
+            val d = cashFlow.date.toEpochDay() - firstDate.toEpochDay()
+            val x = cashFlow.cash / rate.pow(d.toDouble() / 365.0)
+            res += x
+            //Log.i(TAG, "${cashFlow.date} - $rate / $d / $x /$res")
+        }
+        return res
+    }
+
+    override fun derivative(): UnivariateFunction {
+        val f = UnivariateFunction { rate: Double ->
+            var res = 0.0
+            for (cashFlow in list) {
+                val d: Double = (cashFlow.date.toEpochDay() - firstDate.toEpochDay()).toDouble()
+                val x = d * cashFlow.cash * rate.pow(-d / 365.0) / (365 * rate)
+                res += x
+            }
+            res
+        }
+        return f
     }
 }
 
@@ -80,35 +121,36 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
         val firstDate = curDate
         for(oper in operList) {
             val operDate = oper.date.toLocalDate()
-            if(operDate < LocalDate.of(2019, 7, 25) && operDate > LocalDate.of(2019, 7, 8))
-                Log.i(TAG, "$oper")
             if(operDate > curDate) {
-                //portfolioBalanceList.add(PortfolioBalance(curDate.toLocalDate(), curBalance)) // TODO неправильно
-                Log.i(TAG,"$curDate - $curBalance")
+                //Log.i(TAG,"$curDate - $curBalance")
                 curDate = operDate
             }
             val prevBalance: Double = curBalance[oper.currency]!!
             val usdRate = ExchangeRateAPI.getRate(CurrenciesDB.USD, operDate)
-            when(oper.operationType) {
-                OperationType.OPERATION_TYPE_OUTPUT, OperationType.OPERATION_TYPE_INPUT -> {
-                    when(oper.currency) {
-                        CurrenciesDB.USD -> {
-                            usdCashList.add(CashFlow(operDate, oper.payment))
-                            rubCashList.add(CashFlow(operDate, oper.payment * usdRate))
-                        }
-                        CurrenciesDB.RUB -> {
-                            rubCashList.add(CashFlow(operDate, oper.payment))
-                            usdCashList.add(CashFlow(operDate, oper.payment / usdRate))
-                        }
-                        else -> {
-                            rubCashList.add(CashFlow(operDate,
-                                Utils.moneyConvert(oper.payment, oper.currency, CurrenciesDB.RUB, operDate)))
-                            usdCashList.add(CashFlow(operDate,
-                                Utils.moneyConvert(oper.payment, oper.currency, CurrenciesDB.USD, operDate)))
-                        }
+            if(oper.operationType in arrayOf(OperationType.OPERATION_TYPE_BUY_CARD,
+                    OperationType.OPERATION_TYPE_OUTPUT,
+                    OperationType.OPERATION_TYPE_INPUT)) {
+                var sum = oper.payment
+                if(oper.operationType == OperationType.OPERATION_TYPE_BUY_CARD)
+                    sum = -sum
+
+                when(oper.currency) {
+                    CurrenciesDB.USD -> {
+                        usdCashList.add(CashFlow(operDate, sum))
+                        rubCashList.add(CashFlow(operDate, sum * usdRate))
                     }
-                    curBalance[oper.currency] = prevBalance + oper.payment
+                    CurrenciesDB.RUB -> {
+                        rubCashList.add(CashFlow(operDate, sum))
+                        usdCashList.add(CashFlow(operDate, sum / usdRate))
+                    }
+                    else -> {
+                        rubCashList.add(CashFlow(operDate,
+                            Utils.moneyConvert(sum, oper.currency, CurrenciesDB.RUB, operDate)))
+                        usdCashList.add(CashFlow(operDate,
+                            Utils.moneyConvert(sum, oper.currency, CurrenciesDB.USD, operDate)))
+                    }
                 }
+            }
 
 /* не учитываем, т.к. сумма по операции = 0
                OperationTypesDB.SecurityIn -> {
@@ -118,59 +160,38 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
                     Log.i(TAG, "Out ${oper.currency.name}: ${oper.payment}")
                 }
 */
-                else ->
-                    if(oper.instrumentType == InstrumentTypeDB.Currency)
-                    { // buy: oper.payment = -, sell +    payment в рублях
-                        curBalance[oper.currency] = prevBalance + oper.quantity
-                        curBalance[CurrenciesDB.RUB] = curBalance[CurrenciesDB.RUB]!! + oper.payment
-                    } else
-                        curBalance[oper.currency] = prevBalance + oper.payment
-/*              OperationTypesDB.Sell ->
-                OperationTypesDB.Buy ->
-                BrokerCommission ->
-                ExchangeCommission ->
-                ServiceCommission ->
-                MarginCommission ->
-                OtherCommission ->
-                Dividend ->
-                TaxDividend ->
-                Coupon ->
-                TaxCoupon ->
-                Tax ->
-                TaxLucre ->
-                TaxBack ->
-                PartRepayment ->
-                Repayment ->
-                SecurityIn ->
-                SecurityOut ->
-                BuyCurrency ->
-                SellCurrency ->
- */
-            }
+            if(oper.instrumentType == InstrumentTypeDB.Currency &&
+                (oper.operationType == OperationType.OPERATION_TYPE_SELL ||
+                 oper.operationType == OperationType.OPERATION_TYPE_BUY))
+            { // buy: oper.payment = -, sell +    payment в рублях
+                val currency = getCurrenciesDByFigi(oper.figi)
+                    ?: throw IllegalArgumentException("Не найдена валюта c figi ${oper.figi}")
+                if(oper.operationType == OperationType.OPERATION_TYPE_SELL)
+                    curBalance[currency] = curBalance[currency]!! - oper.quantity
+                else
+                    curBalance[currency] = curBalance[currency]!! + oper.quantity
+                curBalance[CurrenciesDB.RUB] = curBalance[CurrenciesDB.RUB]!! + oper.payment
+            } else
+                curBalance[oper.currency] = prevBalance + oper.payment
         }
-
-        for(p in portfolioBalanceList) {
-            Log.i(TAG,"${p.date} - ${p.balance}")
-        }
-
-        val solver = org.apache.commons.math3.analysis.solvers.BrentSolver(1e-5)
-/*        val func = UnivariateFunction { rate: Double ->
-            var res = 0.0
-            val r = 1 + rate
-            for(cashFlow in rubCashList) {
-                val d = cashFlow.date.toEpochDay() - firstDate.toEpochDay()
-                val x = cashFlow.cash / r.pow(d.toDouble() / 365.0)
-                res += x
-                //Log.i(TAG, "${cashFlow.date} - $rate / $d / $x /$res")
-            }
-            res
-        }*/
 
         rubCashList.add(CashFlow(LocalDate.now(), -portfolioBalanceRub))
         usdCashList.add(CashFlow(LocalDate.now(), -portfolioBalanceUsd))
-        Log.i(TAG, "$portfolioBalanceRub / $portfolioBalanceUsd")
+
+        //val solver = org.apache.commons.math3.analysis.solvers.BrentSolver(1e-5)
+        //val solver = org.apache.commons.math3.analysis.solvers.NewtonRaphsonSolver(1e-2)
+/*        rubIrr = solver.solve(1000, IrrFun(firstDate, rubCashList),
+            0.0, 100.0, 0.05) * 100.0 - 100.0*/
+        val solver = org.apache.commons.math3.analysis.solvers.NewtonSolver(1e-3)
         rubIrr = solver.solve(100, IrrFun(firstDate, rubCashList),
-            -100.0, 100.0, 0.1) * 100.0
+            0.0, 100.0, 0.05) * 100.0 - 100.0
+        Log.i(TAG, "$rubIrr")
+        usdIrr = solver.solve(100, IrrFun(firstDate, usdCashList),
+            0.0, 100.0, 0.05) * 100.0 - 100.0
+        Log.i(TAG, "$usdIrr")
+
+        /*rubIrr = solver.solve(100, IrrFun(firstDate, rubCashList),
+            -100.0, 100.0, 0.1) * 100.0*/
 /*        usdIrr = solver.solve(100, IrrFun(firstDate, usdCashList),
             -100.0, 100.0, 0.1) * 100.0*/
     }
@@ -212,7 +233,8 @@ class BusinessLogic(private val tinkoffDao: TinkoffDao,
             var rate = 0.0
             var quantitySecurityIn = 0
             while (remainedForClose > 0) {
-                //Log.i(TAG, "${sell.figi} / ${sell.date} / ${sell.payment} / ${sell.quantity} / ${sell.profit}")
+                if(sell.figi.isEmpty())
+                    Log.i(TAG, "${sell}")
                 val stockBatch: StockBatch = stockBatchList.first { (it.figi == sell.figi) && (it.quantity > 0) }
                 quantityForClose = min(remainedForClose, stockBatch.quantity)
                 val buySum = stockBatch.sum * quantityForClose / stockBatch.quantity

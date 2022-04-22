@@ -56,7 +56,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"
         android:text="Настройки"
-        android:onClick="@{() -> vm.showText()}"
+        android:onClick="@{vm::onSettings}"
         app:layout_constraintTop_toBottomOf="@id/load_all_data"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

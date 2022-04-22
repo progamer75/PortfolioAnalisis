@@ -8,18 +8,6 @@ class PortfolioAnalysisApplication: Application() {
     companion object {
         var context: Context? = null
     }
-    //val tinkoff_db: TinkoffDB by lazy { TinkoffDB.getDatabase(this, CoroutineScope(SupervisorJob())) }
-
-    // Called when the application is starting, before any other application objects have been created.
-    // Overriding this method is totally optional!
-/*    override fun onCreate() {
-        super.onCreate()
-        startKoin{
-            androidLogger()
-            androidContext(this@PortfolioAnalysisApplication)
-            //modules(listOf())
-        }
-    }*/
 
     // Called by the system when the device configuration changes while your component is running.
     // Overriding this method is totally optional!
@@ -41,12 +29,4 @@ class PortfolioAnalysisApplication: Application() {
         mAppExecutors = AppExecutors()
         context = this
     }
-
-/*    fun getDatabase(): TinkoffDB? {
-        return TinkoffDB.getInstance(this, mAppExecutors)
-    }
-
-    fun getRepository(): DataRepository? {
-        return DataRepository.getInstance(getDatabase())
-    }*/
 }
