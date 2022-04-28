@@ -1,19 +1,30 @@
 package com.tvsoft.portfolioanalysis.ui.home
 
 import android.app.Application
-import androidx.lifecycle.*
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
+import com.tvsoft.portfolioanalysis.ExchangeRateAPI
+import com.tvsoft.portfolioanalysis.TinkoffAPI
 import com.tvsoft.portfolioanalysis.TinkoffDao
+import kotlinx.coroutines.launch
 
 class HomeViewModel(val tinkoffDao: TinkoffDao, application: Application) :
     AndroidViewModel(application) {
 
-    private val _portfolioSum = MutableLiveData<Float>().apply {
-        value = 123F
-    }
-    val portfolioSum: LiveData<Float> = _portfolioSum
+    fun onLoadAllData() { // TODO Добавить прогрессбар для отображения прогресса загрузки начальных данных
+        //loadAllDataDone.value = false
+        viewModelScope.launch {
+            if(tinkoffDao.getNumMarketInstrument() < 100)
+                TinkoffAPI.loadInstruments(tinkoffDao)
+            tinkoffDao.deleteAllRates()
+            ExchangeRateAPI.loadExchangeRates()
+            tinkoffDao.deleteAllOperation()
+            TinkoffAPI.loadAllData(tinkoffDao)
 
-    fun getPortfolioSumToString(): String {
-        return portfolioSum.toString()
+            //loadAllDataDone.value = true
+        }
     }
 }
 

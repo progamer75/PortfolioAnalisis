@@ -403,6 +403,9 @@ interface TinkoffDao {
     @Query("Select * from MarketInstrumentDB")
     suspend fun getAllMarketInstrument(): List<MarketInstrumentDB>
 
+    @Query("Select count(*) from MarketInstrumentDB")
+    suspend fun getNumMarketInstrument(): Int
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMarketInstrument(mi: MarketInstrumentDB): Long
 

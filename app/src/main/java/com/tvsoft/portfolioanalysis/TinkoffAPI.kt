@@ -6,6 +6,9 @@ import ru.tinkoff.piapi.contract.v1.*
 import ru.tinkoff.piapi.core.InvestApi
 import ru.tinkoff.piapi.core.models.Portfolio
 import java.math.BigDecimal
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 object TinkoffAPI {
     private val TAG = "TinkoffAPI"
@@ -86,7 +89,86 @@ object TinkoffAPI {
         return res
     }
 
+    suspend fun loadInstruments(tinkoffDao: TinkoffDao) {
+        val stocks = getStocks()
+        val bonds = getBonds()
+        val etfs = getEtfs()
+        val currencies = getCurrencies()
 
+        val miList = mutableListOf<MarketInstrumentDB>()
+        stocks.let {
+            for(stock in stocks) {
+                if(getCurrenciesDB(stock.currency) != null)
+                    miList.add(MarketInstrumentDB(stock))
+                else
+                    Log.i(TAG, "$stock")
+            }
+        }
+        bonds.let {
+            for(bond in bonds) {
+                if(getCurrenciesDB(bond.currency) != null)
+                    miList.add(MarketInstrumentDB(bond))
+                else
+                    Log.i(TAG, "$bond")
+            }
+        }
+        etfs.let {
+            for(etf in etfs) {
+                if(getCurrenciesDB(etf.currency) != null)
+                    miList.add(MarketInstrumentDB(etf))
+                else
+                    Log.i(TAG, "$etf")
+            }
+        }
+        currencies.let {
+            for(cur in currencies) {
+                if(getCurrenciesDB(cur.currency) != null)
+                    miList.add(MarketInstrumentDB(cur))
+                else
+                    Log.i(TAG, "$cur")
+            }
+        }
+        tinkoffDao.loadAllMarketInstrument(miList)
+    }
+
+    suspend fun loadAllData(tinkoffDao: TinkoffDao) {
+        tinkoffDao.deleteAllPortfolio()
+        TinkoffDB.portfolioList.clear() //TODO не красиво все это TinkoffDB и portfolioList
+        var id: Int = 0
+        for(account in userAccounts) {
+            // сначала загружаем портфели
+            val p = PortfolioDB(id, account.id, "")
+            tinkoffDao.insertPortfolio(p)
+            TinkoffDB.portfolioList.add(p)
+
+            // операции загружаем по годам, если за год ничего нет, прерываем загрузку
+            var localDateTime = LocalDateTime.from(LocalDateTime.now())
+            while (true) {
+                val timeFrom = OffsetDateTime.of(localDateTime.minusYears(1), ZoneOffset.UTC)
+                val timeTo = OffsetDateTime.of(localDateTime, ZoneOffset.UTC)
+                localDateTime = localDateTime.minusYears(1)
+
+
+                val fromInstant = timeFrom.toInstant()
+                val toInstant = timeTo.toInstant()
+                val operations = api.operationsService.getAllOperationsSync(account.id, fromInstant, toInstant)
+                if (operations.isEmpty())
+                    break
+
+                for(oper in operations) {
+                    if(oper.state != OperationState.OPERATION_STATE_EXECUTED)
+                        continue
+                    if(tinkoffDao.findOperationById(oper.id).isNotEmpty()) {// операция уже есть
+                        continue
+                    }
+
+                    val operItem = OperationDB(id, oper)
+                    tinkoffDao.insertOperation(operItem)
+                }
+            }
+            id++
+        }
+    }
 
     fun getStocks(): List<Share> = api.instrumentsService.allSharesSync
     fun getBonds(): List<Bond> = api.instrumentsService.allBondsSync

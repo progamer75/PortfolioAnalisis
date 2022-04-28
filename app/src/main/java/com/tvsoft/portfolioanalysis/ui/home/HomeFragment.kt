@@ -1,6 +1,7 @@
 package com.tvsoft.portfolioanalysis.ui.home
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -26,7 +27,7 @@ class HomeFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val application = requireNotNull(this.activity).application
+        val application = requireNotNull(activity).application
         val tinkoffDao = TinkoffDB.getDatabase(application).tinkoffDao
         val viewModelFactory = HomeViewModelFactory(tinkoffDao, application)
         homeViewModel =
@@ -34,6 +35,9 @@ class HomeFragment : Fragment() {
 
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
         val root: View = binding.root
+
+        if(arguments?.getBoolean("loadAll")!!)
+            Log.i(TAG, "LOAD ALL!!!")
 
         //val recycleView: RecyclerView = binding.portfolioRecyclerView
 /*        val tvPortfolioSum = binding.tvSum

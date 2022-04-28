@@ -63,7 +63,7 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this )
         val token = sharedPreferences.getString("token", "")
         if(token == "") {
-            navController.navigate(R.id.settings_fragment)
+            navController.navigate(R.id.action_global_settings_fragment)
         } else
             if(!TinkoffAPI.init(token!!))
             {

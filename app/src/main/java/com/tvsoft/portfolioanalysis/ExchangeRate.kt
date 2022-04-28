@@ -255,5 +255,26 @@ object ExchangeRateAPI {
 
         return rate
     }
+
+    suspend fun loadExchangeRates() {
+        withContext(Dispatchers.IO) {
+            tinkoffDao.deleteAllRates()
+            enumValues<CurrenciesDB>().forEach {
+                var date = LocalDate.of(2018, 3, 1)
+                val rateList =
+                    loadRateFromRes( it, date, LocalDate.now())
+                var prevRate = 0.0
+                rateList.forEach {
+                    while(date <= it.date) {
+                        if(date == it.date) {
+                            prevRate = it.rate
+                        }
+                        tinkoffDao.insertRate(ExchangeRateDB(it.currency, date, prevRate))
+                        date = date.plusDays(1)
+                    }
+                }
+            }
+        }
+    }
 }
 

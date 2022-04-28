@@ -26,10 +26,10 @@ class ServiceFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val application = requireNotNull(this.activity).application
+        val application = requireNotNull(activity).application
         val db = TinkoffDB.getDatabase(application)
-        val viewModelFactory = ServiceViewModelFactory(db.tinkoffDao, application)
 
+        val viewModelFactory = ServiceViewModelFactory(db.tinkoffDao, application)
         serviceViewModel =
             ViewModelProvider(this, viewModelFactory)[ServiceViewModel::class.java]
 
